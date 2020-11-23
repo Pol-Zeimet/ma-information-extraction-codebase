@@ -1,0 +1,3 @@
+[submodule "baseline_pipeline/thirparty/deepform"]
+	path = baseline_pipeline/thirparty/deepform
+	url = https://github.com/project-deepform/deepform.git
