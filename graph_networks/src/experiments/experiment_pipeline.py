@@ -1,7 +1,7 @@
 from datetime import datetime
 from typing import List
 
-from src.main.experiments.experiment import BaseExperiment
+from src.experiments.experiment_class.experiment_class import BaseExperiment
 
 
 class ExperimentPipeline:

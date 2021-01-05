@@ -1,22 +1,13 @@
-import pandas as pd
-import math
-import json
-import json
-import numpy as np
 from graph_nets import blocks
 from graph_nets import graphs
-from graph_nets import modules
-from graph_nets import utils_np
-from graph_nets import utils_tf
-import graph_nets
 import tensorflow as tf
 from tensorflow import keras
 from tensorflow.keras import layers
 
 
-class graph_conv_v2(keras.layers.Layer):
+class graphConvV2(keras.layers.Layer):
     def __init__(self, input_units, intermediate_units, node_shape, edge_shape, **kwargs, ):
-        super(graph_conv_v2, self).__init__(**kwargs)
+        super(graphConvV2, self).__init__(**kwargs)
         self.node_shape = node_shape
         self.edges_shape = edge_shape
 
@@ -101,26 +92,25 @@ class graph_conv_v2(keras.layers.Layer):
         return config
 
 
-class Graph_Model_Softmax:
+class GraphModelSoftmax:
     @staticmethod
-    def create(node_count, edge_count, num_classes):
-        # params
-        node_shape = 768
-        edge_shape = 5
+    def create(node_count, edge_count, node_vector_length=768, edge_vector_length=5, n_folds=2, num_classes=5):
 
         input_units = 768
         intermediate_units = 768
-        output_units = 768
-        n_folds = 2
 
         # input
-        nodes_input = keras.Input(shape=(node_count, node_shape), name='nodes_input')
-        edges_input = keras.Input(shape=(edge_count, edge_shape), name='edges_input')
-        senders_input = keras.Input(shape=(edge_count), dtype='int32', name='senders_input')
-        receivers_input = keras.Input(shape=(edge_count), dtype='int32', name='receivers_input')
+        nodes_input = keras.Input(shape=(node_count, node_vector_length), name='nodes_input')
+        edges_input = keras.Input(shape=(edge_count, edge_vector_length), name='edges_input')
+        senders_input = keras.Input(shape=edge_count, dtype='int32', name='senders_input')
+        receivers_input = keras.Input(shape=edge_count, dtype='int32', name='receivers_input')
 
         # conv_layer
-        graph_conv_layer = graph_conv_v2(input_units, intermediate_units, node_shape, edge_shape, name='graph_conv')
+        graph_conv_layer = graphConvV2(input_units,
+                                       intermediate_units,
+                                       node_vector_length,
+                                       edge_vector_length,
+                                       name='graph_conv')
 
         masking = keras.layers.Masking(name='masking')
         bilstm = layers.Bidirectional(layers.LSTM(64, return_sequences=True), name='bilstm', )
@@ -133,6 +123,7 @@ class Graph_Model_Softmax:
         edges = edges_input
         senders = senders_input
         receivers = receivers_input
+
         for i in range(0, n_folds):
             nodes, edges, new_senders, receivers = graph_conv_layer(nodes, edges, senders, receivers)
 

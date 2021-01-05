@@ -2,39 +2,47 @@ from typing import Dict, Any, Optional
 
 import numpy as np
 from keras import optimizers
-from keras.utils import plot_model
 
-from src.main.experiments.config import Config
-from src.main.models.model_architectures.graph_model_architecturte import  Graph_Model_Softmax
+#from keras.utils import plot_model
 
+from src.experiments.config import Config
+from src.models.model_architectures.graph_model_architecture import GraphModelSoftmax
 
 
 class GraphNetConfig(Config):
     def __init__(self, base_path: str,
                  penalty: float,
-                 eval_type: str,
                  n_iter_train: int,
                  n_iter_eval: int,
-                 batchsize: int,
+                 batch_size: int,
                  lr: float,
-                 col_label: str,
                  model_id: str,
-                 node_count=512,
-                 edge_count=40000,
+                 graph_fold_count: int,
+                 node_count: int,
+                 edge_count: int,
+                 node_vector_length: int,
+                 edge_vector_length: int,
+                 num_classes: int,
+                 n_folds: int,
+                 col_label: str,
                  logging: bool = False,
-                 k_per_class: Optional[int] = None,
                  decay: float = 0.0):
-        super().__init__(base_path, eval_type, k_per_class, n_iter_eval, col_label, logging)
-        self.penalty = penalty
-        self.batchsize = batchsize
-        self.learning_rate = lr
+        super().__init__(base_path, n_iter_eval = n_iter_eval, col_label = col_label, logging = logging,num_classes = num_classes)
+        self.model_id = model_id
+        self.batch_size = batch_size
         self.n_iter_train = n_iter_train
-        self.node_count = node_count
-        self.edge_count = edge_count
+        self.learning_rate = lr
         self.adam_beta_1 = 0.9
         self.adam_beta_2 = 0.999
+        self.penalty = penalty
         self.decay = decay
-        self.model_id = model_id
+
+        self.graph_fold_count = graph_fold_count
+        self.node_count = node_count
+        self.edge_count = edge_count
+        self.node_vector_length = node_vector_length
+        self.edge_vector_length = edge_vector_length
+        self.n_folds = n_folds
 
 
 class GraphModel:
@@ -48,12 +56,18 @@ class GraphModel:
 
     def get_details(self) -> Dict[str, Any]:
         return {"model": "Graph_Net_Softmax",
-                "representation": self.config.pretrained_embeddings,
+                "padded node count": self.config.node_count,
+                "padded edge count": self.config.edge_count,
                 }
 
     def create_model_architecture(self) -> None:
         if self.model_id == "Gaph_Model_Softmax":
-            self.model = Graph_Model_Softmax.create(self.node_count, self.edge_count)
+            self.model = GraphModelSoftmax.create(self.config.node_count,
+                                                  self.config.edge_count,
+                                                  self.config.node_vector_length,
+                                                  self.config.edge_vector_length,
+                                                  self.config.n_folds,
+                                                  self.config.num_classes)
 
         print(self.model.summary)
         adam = optimizers.Adam(lr=self.config.learning_rate,
@@ -65,24 +79,24 @@ class GraphModel:
 
         self.model.compile(optimizer=adam, loss="categorical_crossentropy", metrics=["accuracy"])
 
-    def train(self, inputs, targets) -> None:
+    def train_on_generator(self, train_generator) -> None:
+        return self.model.fit(verbose=1, x=train_generator, epochs=15, steps_per_epoch=20)
+
+    def train_on_single_batch(self, inputs, targets) -> None:
         return self.model.train_on_batch(inputs, [targets])
 
-
     ##needs rework
-    def predict(self, x_test, session, target_labels, path: str = None) -> np.ndarray:
-        similarities = self.model.predict([x_test[0], x_test[1]])
-        self.similarity_store = similarities
+    def predict(self) -> np.ndarray:
 
-        predicts = target_labels[np.argmax(similarities)]
+        predicts = self.model.predict()
 
         return predicts
 
-    def save_architecture_as_plot(self, path: str) -> None:
-        plot_model(self.model, to_file=path + 'siamese_network.png')
+    #def save_architecture_as_plot(self, path: str) -> None:
+    #    plot_model(self.model, to_file=path + 'siamese_network.png')
 
     def save_weights(self, path: str) -> None:
-        model_file = path + 'graph_model.h5'
+        model_file = path + 'graph_model' + self.config.model_id + '.h5'
 
         self.model.save_weights(model_file)
         print("Model saved in " + model_file)
