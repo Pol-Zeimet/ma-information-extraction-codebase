@@ -4,7 +4,7 @@ import numpy as np
 
 class DataGenerator(keras.utils.Sequence):
     def __init__(self, graph_src, label_src, labels, slugs, batch_size=32, node_count=512, node_shape=768,
-                 edge_count=60000, edge_shape=5, shuffle=True):
+                 edge_count=60000, edge_shape=5, shuffle=True, one_hot=False):
         # Initialization
         self.graph_src = graph_src
         self.label_src = label_src
@@ -75,6 +75,10 @@ class DataGenerator(keras.utils.Sequence):
                 print(error)
                 self.failed_loads.append(slug)
 
+        if self.one_hot:
+            y = np.asarray([keras.utils.to_categorical(y[i], num_classes=5, dtype='float') for i in
+                            range(self.batch_size)])
+
         return x, y
 
 
@@ -82,16 +86,16 @@ class DataGeneratorReducedLabels(DataGenerator):
     def __init__(self, graph_src, label_src, labels, slugs, batch_size=32, node_count=512, node_shape=768,
                  edge_count=60000, edge_shape=5, shuffle=True, one_hot=False):
         super(DataGeneratorReducedLabels, self).__init__(graph_src,
-                                                            label_src,
-                                                            batch_size,
-                                                            slugs,
-                                                            shuffle,
-                                                            node_count,
-                                                            node_shape,
-                                                            edge_count,
-                                                            edge_shape,
-                                                            labels,
-                                                            one_hot)
+                                                         label_src,
+                                                         batch_size,
+                                                         slugs,
+                                                         shuffle,
+                                                         node_count,
+                                                         node_shape,
+                                                         edge_count,
+                                                         edge_shape,
+                                                         labels,
+                                                         one_hot)
 
     def __getitem__(self, index):
         super.__getitem__()
@@ -101,7 +105,6 @@ class DataGeneratorReducedLabels(DataGenerator):
 
     def __data_generation(self, list_slugs_temp):
         # Generates data containing batch_size samples
-
         x = [np.zeros(shape=(self.batch_size, self.node_count, self.node_shape)),
              np.zeros(shape=(self.batch_size, self.edge_count, self.edge_shape)),
              np.zeros(shape=(self.batch_size, self.edge_count), dtype='int32'),
@@ -141,7 +144,7 @@ class DataGeneratorReducedLabels(DataGenerator):
         if self.one_hot:
             y = np.asarray([keras.utils.to_categorical(y_temp[i], num_classes=5, dtype='float') for i in
                             range(self.batch_size)])
-
-        # ['O', 'B-MONEY','I-MONEY','L-MONEY','B-ORG','I-ORG','L-ORG','B-DATE','I-DATE','L-DATE','B-GPE','I-GPE','L-GPE','pad']
+        else:
+            y = y_temp
 
         return x, y

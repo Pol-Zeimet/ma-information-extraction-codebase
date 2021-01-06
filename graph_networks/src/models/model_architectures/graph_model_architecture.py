@@ -3,6 +3,7 @@ from graph_nets import graphs
 import tensorflow as tf
 from tensorflow import keras
 from tensorflow.keras import layers
+from tf2crf import CRF, ModelWithCRFLoss
 
 
 class graphConvV2(keras.layers.Layer):
@@ -135,3 +136,55 @@ class GraphModelSoftmax:
         output = output_layer(pre_output)
 
         return keras.Model([nodes_input, edges_input, senders_input, receivers_input], output)
+
+
+class GraphModelCRF:
+    @staticmethod
+    def create(node_count, edge_count, node_vector_length=768, edge_vector_length=5, n_folds=2, num_classes=5):
+
+        input_units = 768
+        intermediate_units = 768
+
+        # input
+        nodes_input = keras.Input(shape=(node_count, node_vector_length), name='nodes_input')
+        edges_input = keras.Input(shape=(edge_count, edge_vector_length), name='edges_input')
+        senders_input = keras.Input(shape=edge_count, dtype='int32', name='senders_input')
+        receivers_input = keras.Input(shape=edge_count, dtype='int32', name='receivers_input')
+
+        # conv_layer
+        graph_conv_layer = graphConvV2(input_units,
+                                       intermediate_units,
+                                       node_vector_length,
+                                       edge_vector_length,
+                                       name='graph_conv')
+
+        masking = keras.layers.Masking(name='masking')
+        bilstm = layers.Bidirectional(layers.LSTM(64, return_sequences=True), name='bilstm', )
+        activation = layers.TimeDistributed(layers.Activation('relu'), name='relu_activation')
+        pre_crf_layer_1 = layers.TimeDistributed(layers.Dense(64, activation='relu'), name='pre_crf_layer_1')
+        pre_crf_layer_2 = layers.TimeDistributed(layers.Dense(num_classes, activation='softmax'),
+                                                 name='pre_crf_layer_2')
+        crf_layer = CRF(name='crf_layer')
+
+        # graph convolution
+        nodes = nodes_input
+        edges = edges_input
+        senders = senders_input
+        receivers = receivers_input
+        for i in range(0, n_folds):
+            nodes, edges, new_senders, receivers = graph_conv_layer(nodes, edges, senders, receivers)
+
+        # sequence labeling
+        mask = masking.compute_mask(nodes)
+        masked_nodes = masking(nodes)
+        sequence = bilstm(masked_nodes, mask=mask)
+
+        activated_sequence = activation(sequence)
+        latent_activatet_sequence = pre_crf_layer_1(activated_sequence)
+        latent_activatet_sequence = pre_crf_layer_2(latent_activatet_sequence)
+
+        masked_sequence = masking(latent_activatet_sequence)
+        mask = masking.compute_mask(masked_sequence)
+        output = crf_layer(masked_sequence, mask=mask)
+
+        return ModelWithCRFLoss(keras.Model([nodes_input, edges_input, senders_input, receivers_input], output))
