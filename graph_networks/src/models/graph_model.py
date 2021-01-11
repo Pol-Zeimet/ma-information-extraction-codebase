@@ -1,10 +1,10 @@
 from typing import Dict, Any
 
 import numpy as np
-from keras import optimizers
+from tensorflow.keras import optimizers
 
-from src.experiments.config import Config
-from src.models.model_architectures.graph_model_architecture import GraphModelSoftmax, GraphModelCRF
+from src import Config
+from src import GraphModelSoftmax, GraphModelCRF
 
 
 class GraphNetConfig(Config):
@@ -54,8 +54,8 @@ class GraphModel:
         self.logging = config.logging
         self.model_id = config.model_id
         self.model_type = self.model_id.split('_')[2]
-        self.create_model_architecture()
         self.model = None
+        self.create_model_architecture()
 
     def get_details(self) -> Dict[str, Any]:
         return {"model": "Graph_Net_Softmax",

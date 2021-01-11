@@ -5,15 +5,15 @@ from tqdm import tqdm
 import mlflow
 import numpy as np
 import pandas as pd
-from sklearn.metrics import precision_recall_fscore_support
+from sklearn.metrics import precision_recall_fscore_support, accuracy_score
 
 from experiments.config import MLFLOW_TRACKING_URI, MLFLOW_EXPERIMENT_NAME
-from src.data.data_generators import DataGenerator
-from src.data.batch_generator import BatchGenerator
-from src.data.dataset import Dataset
-from src.experiments.config import Config
-from src.mlflow_logging import Repository
-from src.plot import create_confusion_matrix
+from src import DataGenerator
+from src import BatchGenerator
+from src import Dataset
+from src import Config
+from src.util.mlflow_logging import Repository
+from src.util.plot import create_confusion_matrix
 
 
 class BaseExperiment:
@@ -51,7 +51,6 @@ class BaseExperiment:
         mlflow.log_params(Repository.get_details())
         mlflow.log_params(self.config.to_dict())
         self.mlflow_run_id = self._get_mlflow_run_id()
-
 
     def _get_mlflow_run_id(self) -> str:
         return mlflow.active_run().info.run_uuid
@@ -91,7 +90,6 @@ class Experiment(BaseExperiment):
             "evaluation": self.config.eval_type
                          })
 
-
     def _run(self) -> None:
         pass
 
@@ -109,6 +107,10 @@ class Experiment(BaseExperiment):
     def predict(self) -> np.ndarray:
         raise NotImplementedError
 
+    def evaluate_batch(self, input, y_true):
+        y_pred = self.predict(input)
+        self.compute_metrics(y_true, y_pred)
+
     def evaluate(self, data_generator: DataGenerator) -> None:
         print("Start evaluation")
         start = time.time()
@@ -118,15 +120,18 @@ class Experiment(BaseExperiment):
             y_true += y
             y_pred += self.predict(x)
         end = time.time()
-
         print("TIME: Finished evaluation of test set in " + str(round(end - start, 3)) + "s")
+        self.compute_metrics(y_true, y_pred)
+
+    def compute_metrics(self, y_true, y_pred):
         precision, rec, f1, sup = precision_recall_fscore_support(np.asarray(y_true),
                                                                   np.asarray(y_pred),
                                                                   average='micro')
+        acc = accuracy_score(np.asarray(y_true), np.asarray(y_pred))
+        mlflow.log_metric("accuracy", acc)
         mlflow.log_metric("f1", f1)
         mlflow.log_metric("recall", rec)
         mlflow.log_metric("precision", precision)
 
         create_confusion_matrix(self.working_dir, self.labels, y_true, y_pred)
-
         print("Latest f1: {}\nprecision: {}\nrecall: {}".format(f1, precision, rec))
