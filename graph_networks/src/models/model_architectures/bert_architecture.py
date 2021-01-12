@@ -7,7 +7,7 @@ from transformers import (
 from src.models.bert_model import ModelArguments, DataTrainingArguments
 
 
-class Bert():
+class Bert:
     @staticmethod
     def create(data_args: DataTrainingArguments, model_args: ModelArguments, num_labels) \
             -> (PreTrainedTokenizerBase,AutoModelForTokenClassification):

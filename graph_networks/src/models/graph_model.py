@@ -2,13 +2,12 @@ from typing import Dict, Any
 
 import numpy as np
 from tensorflow.keras import optimizers
-
-from src import Config
-from src import GraphModelSoftmax, GraphModelCRF
+from src.experiments.config import Config
+from src.models.model_architectures.graph_model_architecture import GraphModelSoftmax, GraphModelCRF
 
 
 class GraphNetConfig(Config):
-    def __init__(self, base_path: str,
+    def __init__(self,
                  penalty: float,
                  n_iter_train: int,
                  n_iter_eval: int,
@@ -21,14 +20,16 @@ class GraphNetConfig(Config):
                  edge_vector_length: int,
                  num_classes: int,
                  n_folds: int,
+                 reducer_type: str,
+                 input_units: int,
+                 intermediate_units: int,
+                 bilstm_units: int,
                  one_hot: bool,
-                 col_label: str,
                  shuffle: bool,
                  logging: bool = False,
                  decay: float = 0.0):
-        super().__init__(base_path,
+        super().__init__(
                          n_iter_eval = n_iter_eval,
-                         col_label = col_label,
                          logging = logging,
                          num_classes = num_classes)
         self.model_id = model_id
@@ -46,6 +47,10 @@ class GraphNetConfig(Config):
         self.node_vector_length = node_vector_length
         self.edge_vector_length = edge_vector_length
         self.n_folds = n_folds
+        self.reducer_type = reducer_type
+        self.input_units = input_units
+        self.intermediate_units = intermediate_units
+        self.bilstm_units = bilstm_units
 
 
 class GraphModel:
@@ -55,15 +60,24 @@ class GraphModel:
         self.model_id = config.model_id
         self.model_type = self.model_id.split('_')[2]
         self.model = None
-        self.create_model_architecture()
+        self._create_model_architecture()
 
     def get_details(self) -> Dict[str, Any]:
-        return {"model": "Graph_Net_Softmax",
-                "padded node count": self.config.node_count,
-                "padded edge count": self.config.edge_count,
-                }
+        return {
+            "model": self.model_id,
+            "model type": self.model_type,
+            "padded node count": self.config.node_count,
+            "padded edge count": self.config.edge_count,
+            "node_vector_length": self.config.node_vector_length,
+            "edge_vector_length": self.config.edge_vector_length,
+            "n_folds": self.config.n_folds,
+            "reducer_type": self.config.reducer_type,
+            "input_units": self.config.input_units,
+            "intermediate_units": self.config.intermediate_units,
+            "bilstm_units": self.config.bilstm_units
+            }
 
-    def create_model_architecture(self) -> None:
+    def _create_model_architecture(self) -> None:
         adam = optimizers.Adam(lr=self.config.learning_rate,
                                beta_1=self.config.adam_beta_1,
                                beta_2=self.config.adam_beta_2,
@@ -77,7 +91,14 @@ class GraphModel:
                                                   self.config.node_vector_length,
                                                   self.config.edge_vector_length,
                                                   self.config.n_folds,
-                                                  self.config.num_classes)
+                                                  self.config.num_classes,
+                                                  self.config.reducer_type,
+                                                  self.config.input_units,
+                                                  self.config.intermediate_units,
+                                                  self.config.bilstm_units
+                                                  )
+
+
 
             self.model.compile(optimizer=adam, loss="categorical_crossentropy", metrics=["accuracy"])
 
@@ -87,7 +108,12 @@ class GraphModel:
                                               self.config.node_vector_length,
                                               self.config.edge_vector_length,
                                               self.config.n_folds,
-                                              self.config.num_classes)
+                                              self.config.num_classes,
+                                              self.config.reducer_type,
+                                              self.config.input_units,
+                                              self.config.intermediate_units,
+                                              self.config.bilstm_units
+                                              )
             self.model.compile(optimizer=adam, metrics=["accuracy"])
 
         print(self.model.summary)

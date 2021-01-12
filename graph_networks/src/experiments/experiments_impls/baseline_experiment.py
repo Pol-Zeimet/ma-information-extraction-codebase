@@ -1,4 +1,4 @@
-import numpy as np
+import time
 import os
 from src.experiments.experiment_class.experiment_class import Experiment
 from src.models.bert_model import ModelArguments, DataTrainingArguments
@@ -12,7 +12,7 @@ from src.models.bert_model import BertModel, BertConfig
 
 class BertExperiment(Experiment):
     def __init__(self, config: BertConfig):
-        super().__init__("graph_net", None, config)
+        super().__init__(config.model_id, None, config)
 
         self.features = None
         self.text_column_name = None
@@ -103,7 +103,7 @@ class BertExperiment(Experiment):
             # No need to convert the labels since they are already ints.
             label_to_id = {i: i for i in range(len(label_list))}
         else:
-            label_list = self.get_label_list( datasets["train"][label_column_name])
+            label_list = self._get_label_list( datasets["train"][label_column_name])
             label_to_id = {l: i for i, l in enumerate(label_list)}
         num_labels = len(label_list)
 
@@ -112,32 +112,43 @@ class BertExperiment(Experiment):
     def _run(self) -> None:
         super()._run()
         if self.training_args.do_train:
-            self.train()
+            self._train()
             print("Done with train")
         if self.training_args.do_eval:
-            self.evaluate()
+            self._evaluate()
             print("Done evaluation on evaluation set")
         if self.training_args.do_predict:
-            self.predict()
+            self._predict(self.datasets)
             print('Done predicting test set')
 
-    def train(self) -> None:
+    def _train(self) -> None:
         self.model.train(self.datasets)
 
-    def predict(self) -> np.ndarray:
-        if self.logging:
+    def _predict(self, dataset):
+        if self.config.logging:
             self.logger.info("*** Predict ***")
-        self.model.predict(self.datasets)
+        start = time.time()
+        predictions, labels, metrics = self.model.predict(dataset)
+        end = time.time()
+        print("TIME: Finished prediction of test set in " + str(round(end - start, 3)) + "s")
+        if self.config.logging:
+            self.logger.info("***** Test results *****")
+            for key, value in metrics.items():
+                self.logger.info(f"  {key} = {value}")
 
-    def evaluate(self):
+
+    def _evaluate(self):
+        start = time.time()
         results = self.model.evaluate()
+        end = time.time()
+        print("TIME: Finished evaluation set in " + str(round(end - start, 3)) + "s")
         if self.config.logging:
             self.logger.info("***** Eval results *****")
             for key, value in results.items():
                 self.logger.info(f"  {key} = {value}")
 
     @staticmethod
-    def get_label_list(labels):
+    def _get_label_list(labels):
         unique_labels = set()
         for label in labels:
             unique_labels = unique_labels | set(label)
@@ -149,6 +160,7 @@ class BertExperiment(Experiment):
         super()._run_holdout()
 
     def _final_log(self) -> None:
+        # Todo
         pass
 
     def _setup_logging(self):

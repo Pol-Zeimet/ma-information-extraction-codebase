@@ -8,19 +8,16 @@ import pandas as pd
 from sklearn.metrics import precision_recall_fscore_support, accuracy_score
 
 from experiments.config import MLFLOW_TRACKING_URI, MLFLOW_EXPERIMENT_NAME
-from src import DataGenerator
-from src import BatchGenerator
-from src import Dataset
-from src import Config
+from src.data.data_generators import DataGenerator
+from src.experiments.config import Config
 from src.util.mlflow_logging import Repository
 from src.util.plot import create_confusion_matrix
 
 
 class BaseExperiment:
-    def __init__(self, name: str, config: Config, dataset: Dataset):
+    def __init__(self, name: str, config: Config):
         self.name = name
         self.config = config
-        self.dataset = dataset
         self.working_dir: str = None
         self.mlflow_run_id: str = None
 
@@ -61,7 +58,6 @@ class BaseExperiment:
 
     def cleanup(self) -> None:
         self.config = None
-        self.dataset = None
         self.working_dir = None
 
 
@@ -75,7 +71,6 @@ class Experiment(BaseExperiment):
         self.model = model
         self.train_set: pd.DataFrame = None
         self.val_set: pd.DataFrame = None
-        self.batch_generator_val: BatchGenerator = None
         self.data_generator: DataGenerator = None
         self.data_src = data_src
         self.label_src = label_src
@@ -101,29 +96,28 @@ class Experiment(BaseExperiment):
         self.model = None
         self.train_set = None
         self.val_set = None
-        self.batch_generator_val = None
 
     @abstractmethod
-    def predict(self) -> np.ndarray:
+    def _predict(self, x) -> np.ndarray:
         raise NotImplementedError
 
-    def evaluate_batch(self, input, y_true):
-        y_pred = self.predict(input)
-        self.compute_metrics(y_true, y_pred)
+    def _evaluate_batch(self, x, y_true):
+        y_pred = self._predict(x)
+        self._compute_metrics(y_true, y_pred)
 
-    def evaluate(self, data_generator: DataGenerator) -> None:
+    def _evaluate(self, data_generator: DataGenerator) -> None:
         print("Start evaluation")
         start = time.time()
         y_pred, y_true = [], []
         for iteration in tqdm(range(self.config.n_iter_eval)):
             x, y = data_generator.__getitem__(iteration)
             y_true += y
-            y_pred += self.predict(x)
+            y_pred += self._predict(x)
         end = time.time()
         print("TIME: Finished evaluation of test set in " + str(round(end - start, 3)) + "s")
-        self.compute_metrics(y_true, y_pred)
+        self._compute_metrics(y_true, y_pred)
 
-    def compute_metrics(self, y_true, y_pred):
+    def _compute_metrics(self, y_true, y_pred):
         precision, rec, f1, sup = precision_recall_fscore_support(np.asarray(y_true),
                                                                   np.asarray(y_pred),
                                                                   average='micro')

@@ -133,14 +133,18 @@ class BertModel:
         self.model: AutoModelForTokenClassification = None
         self.tokenizer: PreTrainedTokenizerBase = None
         self.trainer: Trainer = None
-        self.create_model_architecture()
+        self._create_model_architecture()
 
     def get_details(self) -> Dict[str, Any]:
-        return {"model": "Bert",
-                'number of classes': self.config.num_classes,
-                }
+        return {
+            "model": "Bert",
+            'number of classes': self.config.num_classes,
+            "model_base": self.model_args.model_name_or_path,
+            "config name": self.model_args.config_name,
+            "tokenizer name": self.model_args.tokenizer_name
+        }
 
-    def create_model_architecture(self) -> None:
+    def _create_model_architecture(self) -> None:
         self.tokenizer, self.model = Bert.create(self.data_args, self.model_args, self.config.num_classes)
 
     def train(self, data):
@@ -152,7 +156,7 @@ class BertModel:
             eval_dataset=data['validation'],
             tokenizer=self.tokenizer,
             data_collator=data_collator,
-            compute_metrics=self.compute_metrics,
+            compute_metrics=self._compute_metrics,
         )
         self.trainer.train(self.model_args.model_name_or_path
                            if os.path.isdir(self.model_args.model_name_or_path)
@@ -165,13 +169,13 @@ class BertModel:
         test_dataset = datasets["test"]
         predictions, labels, metrics = self.trainer.predict(test_dataset)
         predictions = np.argmax(predictions, axis=2)
-        return predictions
+        return predictions, labels, metrics
 
     def save_weights(self, path: str) -> None:
         self.trainer.save_model(path)
         print("Model saved in " + path)
 
-    def compute_metrics(self, p):
+    def _compute_metrics(self, p):
         predictions, labels = p
         predictions = np.argmax(predictions, axis=2)
 
