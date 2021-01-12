@@ -46,10 +46,10 @@ exp.extend(GraphExperiment(GraphNetConfig(batch_size=batch_size,
                                           lr=lr,
                                           shuffle=True,
                                           one_hot=True if model_id.split('_')[2] == 'Softmax' else False),
-                           data_src=os.path.abspath('../data/SROIE/graphs/'),
-                           label_src=os.path.abspath('../data/SROIE/labels/'),
+                           data_src=os.path.abspath('graph_networks/data/SROIE/graphs/'),
+                           label_src=os.path.abspath('graph_networks/data/SROIE/labels/'),
                            labels=less_labels if model_id.split('_')[-2] == 5 else labels,
-                           slug_src=os.path.abspath('../data/SROIE/slugs.npy'))
+                           slug_src=os.path.abspath('graph_networks/data/SROIE/slugs.npy'))
            for model_id in model_ids for lr in lr_s)
 
 if __name__ == "__main__":
