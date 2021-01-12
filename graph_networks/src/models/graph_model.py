@@ -27,14 +27,15 @@ class GraphNetConfig(Config):
                  one_hot: bool,
                  shuffle: bool,
                  logging: bool = False,
+                 train_test_split: float = 0.25,
                  decay: float = 0.0):
         super().__init__(
-                         n_iter_eval = n_iter_eval,
                          logging = logging,
                          num_classes = num_classes)
         self.model_id = model_id
         self.batch_size = batch_size
         self.n_iter_train = n_iter_train
+        self.n_iter_eval = n_iter_eval
         self.learning_rate = lr
         self.adam_beta_1 = 0.9
         self.adam_beta_2 = 0.999
@@ -51,6 +52,7 @@ class GraphNetConfig(Config):
         self.input_units = input_units
         self.intermediate_units = intermediate_units
         self.bilstm_units = bilstm_units
+        self.train_test_split = train_test_split
 
 
 class GraphModel:

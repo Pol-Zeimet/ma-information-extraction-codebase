@@ -1,7 +1,7 @@
 import time
 import os
 from src.experiments.experiment_class.experiment_class import Experiment
-from src.models.bert_model import ModelArguments, DataTrainingArguments
+from src.util.Bert_Arguments.arguments import ModelArguments, DataTrainingArguments
 from transformers import HfArgumentParser, TrainingArguments, set_seed
 from transformers.utils import logging as transformer_logging
 from transformers.trainer_utils import is_main_process
@@ -12,7 +12,7 @@ from src.models.bert_model import BertModel, BertConfig
 
 class BertExperiment(Experiment):
     def __init__(self, config: BertConfig):
-        super().__init__(config.model_id, None, config)
+        super().__init__(config.model_id, config)
 
         self.features = None
         self.text_column_name = None

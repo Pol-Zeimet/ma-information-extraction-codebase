@@ -1,7 +1,10 @@
+import os
 from src import GraphExperiment
 from src import GraphNetConfig
 from src import ExperimentPipeline
-import os
+
+os.environ["CUDA_DEVICE_ORDER"]="PCI_BUS_ID"
+os.environ["CUDA_VISIBLE_DEVICES"]="0"
 
 n_iter_eval = 10
 n_iter_train = 40
@@ -20,10 +23,10 @@ lr_s = [0.001, 0.005, 0.01]
 text = "text"
 train_est_split = 0.25
 exp = []
-model_ids = ['Graph_Model_CRF_0_fold_5_classes',
-             'Graph_Model_CRF_1_fold_5_classes',
-             'Graph_Model_CRF_2_fold_5_classes',
-             'Graph_Model_CRF_3_fold_5_classes']
+model_ids = ['Graph_Model_Softmax_0_fold_5_classes',
+             'Graph_Model_Softmax_1_fold_5_classes',
+             'Graph_Model_Softmax_2_fold_5_classes',
+             'Graph_Model_Softmax_3_fold_5_classes']
 
 exp.extend(GraphExperiment(GraphNetConfig(batch_size=batch_size,
                                           n_iter_eval=n_iter_eval,

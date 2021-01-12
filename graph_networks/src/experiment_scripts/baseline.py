@@ -1,7 +1,8 @@
 import os
-from src import BertExperiment
-from src import BertConfig
-from src import ExperimentPipeline
+from src import BertExperiment, ExperimentPipeline, BertConfig
+
+os.environ["CUDA_DEVICE_ORDER"]="PCI_BUS_ID"
+os.environ["CUDA_VISIBLE_DEVICES"]="0"
 
 exp = []
 model_ids = ['Baseline_Model_Bert_5_classes',
@@ -11,29 +12,29 @@ model_ids = ['Baseline_Model_Bert_5_classes',
 data_registry ={
     '5':
         {
-            "train_f": os.path.abspath('../data/SROIE/NER/train_less_classes.json'),
-            "test_f": os.path.abspath('../data/SROIE/NER/test_less_classes.json'),
-            "validate_f": os.path.abspath('../data/SROIE/NER/validate_less_classes.json'),
+            "train_f": os.path.abspath('../data/SROIE/Baseline/train_less_classes.json'),
+            "test_f": os.path.abspath('../data/SROIE/Baseline/test_less_classes.json'),
+            "validate_f": os.path.abspath('../data/SROIE/Baseline/validate_less_classes.json'),
             "labels" : ['O', 'I-MONEY', 'I-ORG', 'I-DATE', 'I-GPE']
         },
     '9':
         {
-            "train_f": os.path.abspath('../data/SROIE/NER/train_medium_classes.json'),
-            "test_f": os.path.abspath('../data/SROIE/NER/test_medium_classes.json'),
-            "validate_f": os.path.abspath('../data/SROIE/NER/validate_medium_classes.json'),
+            "train_f": os.path.abspath('../data/SROIE/Baseline/train_medium_classes.json'),
+            "test_f": os.path.abspath('../data/SROIE/Baseline/test_medium_classes.json'),
+            "validate_f": os.path.abspath('../data/SROIE/Baseline/validate_medium_classes.json'),
             "labels": ['O', 'B-MONEY', 'I-MONEY', 'B-ORG', 'I-ORG', 'B-DATE', 'I-DATE', 'B-GPE', 'I-GPE']
         },
     '13':
         {
-            "train_f": os.path.abspath('../data/SROIE/NER/train_classes.json'),
-            "test_f": os.path.abspath('../data/SROIE/NER/test_classes.json'),
-            "validate_f": os.path.abspath('../data/SROIE/NER/validate_classes.json'),
+            "train_f": os.path.abspath('../data/SROIE/Baseline/train_classes.json'),
+            "test_f": os.path.abspath('../data/SROIE/Baseline/test_classes.json'),
+            "validate_f": os.path.abspath('../data/SROIE/Baseline/validate_classes.json'),
             "labels": ['O', 'B-MONEY', 'I-MONEY', 'L-MONEY', 'B-ORG', 'I-ORG', 'L-ORG', 'B-DATE', 'I-DATE', 'L-DATE',
                        'B-GPE', 'I-GPE', 'L-GPE']
         }
 }
 
-exp.extend(BertExperiment(BertConfig(model_dir="",
+exp.extend(BertExperiment(BertConfig(model_dir="../../Checkpoints/",
                                      model_id=model_id,
                                      model_type=model_id.split('_')[2],
                                      label_list=data_registry[model_id.split('_')[-2]]["labels"],

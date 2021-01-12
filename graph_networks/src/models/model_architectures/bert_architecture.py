@@ -4,10 +4,10 @@ from transformers import (
     AutoTokenizer,
     PreTrainedTokenizerBase
 )
-from src.models.bert_model import ModelArguments, DataTrainingArguments
+from src.util.Bert_Arguments.arguments import ModelArguments, DataTrainingArguments
 
 
-class Bert:
+class Bert():
     @staticmethod
     def create(data_args: DataTrainingArguments, model_args: ModelArguments, num_labels) \
             -> (PreTrainedTokenizerBase,AutoModelForTokenClassification):

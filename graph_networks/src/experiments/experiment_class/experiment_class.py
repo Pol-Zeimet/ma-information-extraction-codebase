@@ -7,7 +7,7 @@ import numpy as np
 import pandas as pd
 from sklearn.metrics import precision_recall_fscore_support, accuracy_score
 
-from experiments.config import MLFLOW_TRACKING_URI, MLFLOW_EXPERIMENT_NAME
+from src.experiment_scripts.config import MLFLOW_TRACKING_URI, MLFLOW_EXPERIMENT_NAME
 from src.data.data_generators import DataGenerator
 from src.experiments.config import Config
 from src.util.mlflow_logging import Repository
@@ -62,19 +62,13 @@ class BaseExperiment:
 
 
 class Experiment(BaseExperiment):
-    def __init__(self, name: str, model, config: Config,
-                 data_src: str,
-                 label_src: str,
-                 labels: list,
+    def __init__(self, name: str, config: Config
                  ):
         super().__init__(name, config)
-        self.model = model
         self.train_set: pd.DataFrame = None
         self.val_set: pd.DataFrame = None
         self.data_generator: DataGenerator = None
-        self.data_src = data_src
-        self.label_src = label_src
-        self.labels = labels
+
 
     def _initial_log(self) -> None:
         super()._initial_log()
@@ -82,7 +76,6 @@ class Experiment(BaseExperiment):
         mlflow.log_params(self.model.get_details())
         mlflow.set_tags({
             "type": "experiment",
-            "evaluation": self.config.eval_type
                          })
 
     def _run(self) -> None:

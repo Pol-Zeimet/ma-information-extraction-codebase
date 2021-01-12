@@ -11,10 +11,11 @@ from tqdm import tqdm
 class GraphExperiment(Experiment):
 
     def __init__(self, config: GraphNetConfig, data_src: str, label_src: str, slug_src: str, labels: list):
-        super().__init__(config.model_id, None, config)
+        super().__init__(config.model_id, config)
         self.data_generator_train: DataGenerator = None
         self.data_generator_validation: DataGenerator = None
         self.similarity_store: Dict = None
+
         self.data_src = data_src
         self.label_src = label_src
         self.all_slugs: list = None

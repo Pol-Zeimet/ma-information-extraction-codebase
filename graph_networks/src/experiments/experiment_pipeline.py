@@ -16,7 +16,7 @@ class ExperimentPipeline:
             except RuntimeError as err:
                 print(f'An error occurred while executing experiment {experiment.name}')
                 print(err)
-                print('Trying to execute remaining experiments')
+                print('Trying to execute remaining experiment_scripts')
 
             finally:
                 experiment.cleanup()
