@@ -10,7 +10,7 @@ from sklearn.metrics import precision_recall_fscore_support, accuracy_score
 from src.experiment_scripts.config import MLFLOW_TRACKING_URI, MLFLOW_EXPERIMENT_NAME
 from src.data.data_generators import DataGenerator
 from src.experiments.config import Config
-from src.util.mlflow_logging import Repository
+#from src.util.mlflow_logging import Repository
 from src.util.plot import create_confusion_matrix
 
 
@@ -45,7 +45,7 @@ class BaseExperiment:
     def _initial_log(self) -> None:
         mlflow.set_tracking_uri(MLFLOW_TRACKING_URI)
         mlflow.set_experiment(MLFLOW_EXPERIMENT_NAME)
-        mlflow.log_params(Repository.get_details())
+        #mlflow.log_params(Repository.get_details())
         mlflow.log_params(self.config.to_dict())
         self.mlflow_run_id = self._get_mlflow_run_id()
 
@@ -72,7 +72,6 @@ class Experiment(BaseExperiment):
 
     def _initial_log(self) -> None:
         super()._initial_log()
-        mlflow.log_params()
         mlflow.log_params(self.model.get_details())
         mlflow.set_tags({
             "type": "experiment",

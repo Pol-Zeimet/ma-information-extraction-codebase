@@ -12,29 +12,29 @@ model_ids = ['Baseline_Model_Bert_5_classes',
 data_registry ={
     '5':
         {
-            "train_f": os.path.abspath('graph_networks/data/SROIE/Baseline/train_less_classes.json'),
-            "test_f": os.path.abspath('graph_networks/data/SROIE/Baseline/test_less_classes.json'),
-            "validate_f": os.path.abspath('graph_networks/data/SROIE/Baseline/validate_less_classes.json'),
+            "train_f": os.path.abspath('ma-information-extraction-codebase/graph_networks/data/SROIE/Baseline/train_less_classes.json'),
+            "test_f": os.path.abspath('ma-information-extraction-codebase/graph_networks/data/SROIE/Baseline/test_less_classes.json'),
+            "validate_f": os.path.abspath('ma-information-extraction-codebase/graph_networks/data/SROIE/Baseline/validate_less_classes.json'),
             "labels" : ['O', 'I-MONEY', 'I-ORG', 'I-DATE', 'I-GPE']
         },
     '9':
         {
-            "train_f": os.path.abspath('graph_networks/data/SROIE/Baseline/train_medium_classes.json'),
-            "test_f": os.path.abspath('graph_networks/data/SROIE/Baseline/test_medium_classes.json'),
-            "validate_f": os.path.abspath('graph_networks/data/SROIE/Baseline/validate_medium_classes.json'),
+            "train_f": os.path.abspath('ma-information-extraction-codebase/graph_networks/data/SROIE/Baseline/train_medium_classes.json'),
+            "test_f": os.path.abspath('ma-information-extraction-codebase/graph_networks/data/SROIE/Baseline/test_medium_classes.json'),
+            "validate_f": os.path.abspath('ma-information-extraction-codebase/graph_networks/data/SROIE/Baseline/validate_medium_classes.json'),
             "labels": ['O', 'B-MONEY', 'I-MONEY', 'B-ORG', 'I-ORG', 'B-DATE', 'I-DATE', 'B-GPE', 'I-GPE']
         },
     '13':
         {
-            "train_f": os.path.abspath('graph_networks/data/SROIE/Baseline/train_classes.json'),
-            "test_f": os.path.abspath('graph_networks/data/SROIE/Baseline/test_classes.json'),
-            "validate_f": os.path.abspath('graph_networks/data/SROIE/Baseline/validate_classes.json'),
+            "train_f": os.path.abspath('ma-information-extraction-codebase/graph_networks/data/SROIE/Baseline/train_classes.json'),
+            "test_f": os.path.abspath('ma-information-extraction-codebase/graph_networks/data/SROIE/Baseline/test_classes.json'),
+            "validate_f": os.path.abspath('ma-information-extraction-codebase/graph_networks/data/SROIE/Baseline/validate_classes.json'),
             "labels": ['O', 'B-MONEY', 'I-MONEY', 'L-MONEY', 'B-ORG', 'I-ORG', 'L-ORG', 'B-DATE', 'I-DATE', 'L-DATE',
                        'B-GPE', 'I-GPE', 'L-GPE']
         }
 }
 
-exp.extend(BertExperiment(BertConfig(model_dir="graph_networks/Checkpoints/",
+exp.extend(BertExperiment(BertConfig(model_dir="ma-information-extraction-codebase/graph_networks/Checkpoints/",
                                      model_id=model_id,
                                      model_type=model_id.split('_')[2],
                                      label_list=data_registry[model_id.split('_')[-2]]["labels"],

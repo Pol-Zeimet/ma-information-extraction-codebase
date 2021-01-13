@@ -1,5 +1,7 @@
 from datetime import datetime
 from typing import List
+import mlflow
+import sys
 
 from src.experiments.experiment_class.experiment_class import BaseExperiment
 
@@ -13,10 +15,12 @@ class ExperimentPipeline:
                 experiment.setup()
                 experiment.run()
 
-            except RuntimeError as err:
+            except:
                 print(f'An error occurred while executing experiment {experiment.name}')
-                print(err)
+                print("Unexpected error:", sys.exc_info())
                 print('Trying to execute remaining experiment_scripts')
+                if mlflow.active_run():
+                    mlflow.end_run()
 
             finally:
                 experiment.cleanup()
