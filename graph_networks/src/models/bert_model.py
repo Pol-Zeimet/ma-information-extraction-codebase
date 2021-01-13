@@ -21,6 +21,7 @@ class BertConfig(Config):
                  train_f: str,
                  test_f: str,
                  validate_f: str,
+                 overwrite_output_dir: bool = False,
                  logging: bool = True):
         super().__init__(logging=logging,
                          num_classes=num_classes)
@@ -31,6 +32,7 @@ class BertConfig(Config):
         self.train_f = train_f
         self.test_f = test_f
         self.validate_f = validate_f
+        self.overwrite_output_dir = overwrite_output_dir
 
 
 

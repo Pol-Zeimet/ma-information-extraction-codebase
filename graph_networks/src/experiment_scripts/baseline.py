@@ -34,7 +34,7 @@ data_registry ={
         }
 }
 
-exp.extend(BertExperiment(BertConfig(model_dir="ma-information-extraction-codebase/graph_networks/Checkpoints/",
+exp.extend(BertExperiment(BertConfig(model_dir=os.path.abspath("ma-information-extraction-codebase/graph_networks/Checkpoints/"),
                                      model_id=model_id,
                                      model_type=model_id.split('_')[2],
                                      label_list=data_registry[model_id.split('_')[-2]]["labels"],
@@ -42,10 +42,12 @@ exp.extend(BertExperiment(BertConfig(model_dir="ma-information-extraction-codeba
                                      train_f=data_registry[model_id.split('_')[-2]]["train_f"],
                                      test_f=data_registry[model_id.split('_')[-2]]["test_f"],
                                      validate_f=data_registry[model_id.split('_')[-2]]["validate_f"],
+                                     overwrite_output_dir=True,
                                      logging=True
                                      )) for model_id in model_ids)
 
 if __name__ == "__main__":
     experiments = exp
     pipeline = ExperimentPipeline()
-    pipeline.run(experiments)
+    pipeline.run(experiments=experiments,
+                 filename=os.path.abspath('ma-information-extraction-codebase/graph_networks/logs/error_log'))

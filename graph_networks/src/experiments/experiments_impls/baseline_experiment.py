@@ -36,7 +36,8 @@ class BertExperiment(Experiment):
             "do_train": True,
             "do_eval": True,
             "do_predict": True,
-            "no_cuda": False
+            "no_cuda": False,
+            "overwrite_output_dir": self.config.overwrite_output_dir
         }
         self.model_args, self.data_args, self.training_args = self.parser.parse_dict(self.args_dict)
 
