@@ -32,7 +32,7 @@ class BertExperiment(Experiment):
             "train_file": config.train_f,
             "test_file": config.test_f,
             "validation_file": config.validate_f,
-            "output_dir": self.config.model_dir + self.config.model_id,
+            "output_dir": os.path.join(self.config.model_dir, self.config.model_id),
             "do_train": True,
             "do_eval": True,
             "do_predict": True,

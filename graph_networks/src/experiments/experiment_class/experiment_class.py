@@ -46,8 +46,7 @@ class BaseExperiment:
         mlflow.set_tracking_uri(MLFLOW_TRACKING_URI)
         mlflow.set_experiment(MLFLOW_EXPERIMENT_NAME)
         #mlflow.log_params(Repository.get_details())
-        mlflow.log_params(self.config.to_dict())
-        self.mlflow_run_id = self._get_mlflow_run_id()
+
 
     def _get_mlflow_run_id(self) -> str:
         return mlflow.active_run().info.run_uuid
@@ -81,7 +80,8 @@ class Experiment(BaseExperiment):
         pass
 
     def _final_log(self) -> None:
-        pass
+        mlflow.log_params(self.config.to_dict())
+        self.mlflow_run_id = self._get_mlflow_run_id()
 
     def cleanup(self) -> None:
         super().cleanup()
