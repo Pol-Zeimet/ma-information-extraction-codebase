@@ -49,5 +49,4 @@ exp.extend(BertExperiment(BertConfig(model_dir=os.path.abspath("ma-information-e
 if __name__ == "__main__":
     experiments = exp
     pipeline = ExperimentPipeline()
-    pipeline.run(experiments=experiments,
-                 filename=os.path.abspath('ma-information-extraction-codebase/graph_networks/logs/error_log'))
+    pipeline.run(experiments=experiments)
