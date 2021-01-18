@@ -1,9 +1,11 @@
 from typing import Dict, Any
 
 import numpy as np
+from tensorflow import argmax as tf_argmax, one_hot as tf_one_hot
 from tensorflow.keras import optimizers
 from src.experiments.config import Config
-from src.models.model_architectures.graph_model_architecture import GraphModelSoftmax, GraphModelCRF
+from src.models.model_architectures.graph_model_architecture import GraphModelSoftmax, GraphModelCRF, GraphModelCRFv2
+from tensorflow.keras import Model
 
 
 class GraphNetConfig(Config):
@@ -30,8 +32,8 @@ class GraphNetConfig(Config):
                  train_test_split: float = 0.25,
                  decay: float = 0.0):
         super().__init__(
-                         logging = logging,
-                         num_classes = num_classes)
+            logging=logging,
+            num_classes=num_classes)
         self.model_id = model_id
         self.batch_size = batch_size
         self.n_iter_train = n_iter_train
@@ -61,7 +63,7 @@ class GraphModel:
         self.logging = config.logging
         self.model_id = config.model_id
         self.model_type = self.model_id.split('_')[2]
-        self.model = None
+        self.model: Model = None
         self._create_model_architecture()
 
     def get_details(self) -> Dict[str, Any]:
@@ -77,7 +79,7 @@ class GraphModel:
             "input_units": self.config.input_units,
             "intermediate_units": self.config.intermediate_units,
             "bilstm_units": self.config.bilstm_units
-            }
+        }
 
     def _create_model_architecture(self) -> None:
         adam = optimizers.Adam(lr=self.config.learning_rate,
@@ -100,8 +102,6 @@ class GraphModel:
                                                   self.config.bilstm_units
                                                   )
 
-
-
             self.model.compile(optimizer=adam, loss="categorical_crossentropy", metrics=["accuracy"])
 
         if self.model_type == "CRF":
@@ -118,7 +118,19 @@ class GraphModel:
                                               )
             self.model.compile(optimizer=adam, metrics=["accuracy"])
 
-        print(self.model.summary)
+        if self.model_type == "CRFv2":
+            self.model = GraphModelCRFv2.create(self.config.node_count,
+                                                self.config.edge_count,
+                                                self.config.node_vector_length,
+                                                self.config.edge_vector_length,
+                                                self.config.n_folds,
+                                                self.config.num_classes,
+                                                self.config.reducer_type,
+                                                self.config.input_units,
+                                                self.config.intermediate_units,
+                                                self.config.bilstm_units
+                                                )
+            self.model.compile(optimizer=adam, metrics=["accuracy"], run_eagerly=True)
 
     def train_on_generator(self, train_generator):
         return self.model.fit(verbose=1, x=train_generator, epochs=15, steps_per_epoch=20)
@@ -126,11 +138,10 @@ class GraphModel:
     def train_on_single_batch(self, inputs, targets):
         return self.model.train_on_batch(inputs, [targets])
 
-    # needs rework
     def predict(self, x) -> np.ndarray:
-
         predicts = self.model.predict(x)
-
+        if self.model_type == 'Softmax':
+            predicts = tf_one_hot(tf_argmax(predicts, axis=2), depth=self.config.num_classes)
         return predicts
 
     def save_weights(self, path: str) -> None:
@@ -138,5 +149,3 @@ class GraphModel:
 
         self.model.save_weights(model_file)
         print("Model saved in " + model_file)
-
-

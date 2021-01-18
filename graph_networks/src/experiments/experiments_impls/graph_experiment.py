@@ -14,7 +14,6 @@ class GraphExperiment(Experiment):
         super().__init__(config.model_id, config)
         self.data_generator_train: DataGenerator = None
         self.data_generator_validation: DataGenerator = None
-        self.similarity_store: Dict = None
 
         self.data_src = data_src
         self.label_src = label_src
@@ -25,14 +24,19 @@ class GraphExperiment(Experiment):
 
     def setup(self):
         self.all_slugs = np.load(self.slug_src)
-        train_slugs = self.all_slugs[0:math.floor(len(self.all_slugs) * self.config.train_test_split)]
-        validation_slugs = self.all_slugs[math.floor(len(self.all_slugs) * self.config.train_test_split):]
+        validation_slugs = self.all_slugs[0:math.floor(len(self.all_slugs) * self.config.train_test_split)]
+        train_slugs = self.all_slugs[math.floor(len(self.all_slugs) * self.config.train_test_split):]
 
-        if len(self.labels) == 5:
+        if self.config.num_classes == 5:
             self.data_generator_train = DataGeneratorReducedLabels(graph_src=self.data_src,
                                                                    label_src=self.label_src,
                                                                    labels=self.labels,
                                                                    slugs=train_slugs,
+                                                                   node_shape=self.config.node_vector_length,
+                                                                   node_count=self.config.node_count,
+                                                                   edge_shape=self.config.edge_vector_length,
+                                                                   edge_count=self.config.edge_count,
+                                                                   batch_size=self.config.batch_size,
                                                                    one_hot=self.config.one_hot,
                                                                    shuffle=self.config.shuffle)
 
@@ -40,6 +44,11 @@ class GraphExperiment(Experiment):
                                                                         label_src=self.label_src,
                                                                         labels=self.labels,
                                                                         slugs=validation_slugs,
+                                                                        node_shape=self.config.node_vector_length,
+                                                                        node_count=self.config.node_count,
+                                                                        edge_shape=self.config.edge_vector_length,
+                                                                        edge_count=self.config.edge_count,
+                                                                        batch_size=self.config.batch_size,
                                                                         one_hot=self.config.one_hot,
                                                                         shuffle=self.config.shuffle)
         else:
@@ -47,6 +56,11 @@ class GraphExperiment(Experiment):
                                                       label_src=self.label_src,
                                                       labels=self.labels,
                                                       slugs=train_slugs,
+                                                      node_shape=self.config.node_vector_length,
+                                                      node_count=self.config.node_count,
+                                                      edge_shape=self.config.edge_vector_length,
+                                                      edge_count=self.config.edge_count,
+                                                      batch_size=self.config.batch_size,
                                                       shuffle=self.config.shuffle,
                                                       one_hot=self.config.one_hot)
 
@@ -54,6 +68,11 @@ class GraphExperiment(Experiment):
                                                            label_src=self.label_src,
                                                            labels=self.labels,
                                                            slugs=validation_slugs,
+                                                           node_shape=self.config.node_vector_length,
+                                                           node_count=self.config.node_count,
+                                                           edge_shape=self.config.edge_vector_length,
+                                                           edge_count=self.config.edge_count,
+                                                           batch_size=self.config.batch_size,
                                                            shuffle=self.config.shuffle,
                                                            one_hot=self.config.one_hot)
 
@@ -61,6 +80,7 @@ class GraphExperiment(Experiment):
 
     def _run(self) -> None:
         super()._run()
+        mlflow.start_run()
         self._train()
         print("Done with train")
         self._evaluate(self.data_generator_validation)
@@ -70,7 +90,6 @@ class GraphExperiment(Experiment):
         super().cleanup()
         self.data_generator_train = None
         self.data_generator_validation = None
-        self.similarity_store = None
 
     def _train(self) -> None:
         print("Training with {} iterations, batch size={}".format(str(self.config.n_iter_train),
@@ -80,7 +99,7 @@ class GraphExperiment(Experiment):
             loss = self.model.train_on_single_batch(inputs, targets)
             mlflow.log_metric("loss", loss[0])
             if iteration % 5 == 0:
-                super()._evaluate_batch(inputs, targets)
+                super()._evaluate_batch(inputs, targets, iteration)
         print("Training done.")
 
     def _evaluate(self, data_generator: DataGenerator) -> None:

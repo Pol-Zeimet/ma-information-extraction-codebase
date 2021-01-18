@@ -12,15 +12,13 @@ batch_size = 10
 
 labels = ['O', 'B-MONEY', 'I-MONEY', 'L-MONEY', 'B-ORG', 'I-ORG', 'L-ORG', 'B-DATE', 'I-DATE', 'L-DATE', 'B-GPE',
           'I-GPE', 'L-GPE']
-less_labels = ['O', 'I-MONEY', 'I-ORG', 'I-DATE', 'I-GPE']
 node_count = 512
 edge_count = 40000
-node_vector_length = 728
+node_vector_length = 768
 edge_vector_length = 5
 
 penalty = 0.01
-lr_s = [0.001, 0.005, 0.01]
-text = "text"
+lr_s = [0.0001, 0.0005, 0.001, 0.005, 0.01]
 train_est_split = 0.25
 exp = []
 model_ids = ['Graph_Model_Softmax_0_fold_5_classes',
@@ -46,10 +44,10 @@ exp.extend(GraphExperiment(GraphNetConfig(batch_size=batch_size,
                                           lr=lr,
                                           shuffle=True,
                                           one_hot=True if model_id.split('_')[2] == 'Softmax' else False),
-                           data_src=os.path.abspath('graph_networks/data/SROIE/graphs/'),
-                           label_src=os.path.abspath('graph_networks/data/SROIE/labels/'),
-                           labels=less_labels if model_id.split('_')[-2] == 5 else labels,
-                           slug_src=os.path.abspath('graph_networks/data/SROIE/slugs.npy'))
+                           data_src=os.path.abspath('ma-information-extraction-codebase/graph_networks/data/SROIE/graphs/'),
+                           label_src=os.path.abspath('ma-information-extraction-codebase/graph_networks/data/SROIE/labels/'),
+                           labels=labels,
+                           slug_src=os.path.abspath('ma-information-extraction-codebase/graph_networks/data/SROIE/slugs.npy'))
            for model_id in model_ids for lr in lr_s)
 
 if __name__ == "__main__":

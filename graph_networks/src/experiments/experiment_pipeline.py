@@ -22,7 +22,7 @@ class ExperimentPipeline:
                 filename = "ma-information-extraction-codebase/graph_networks/logs/error_log.txt"
                 print(f'An error occurred while executing experiment {experiment.name}')
                 print(f"writing to file {filename}")
-                with open(os.path.join(os.getcwd(), filename), 'w') as f:
+                with open(os.path.join(os.getcwd(), filename), 'a') as f:
                     f.write(datetime.today().strftime('%d-%m-%Y-%H:%M:%S'))
                     f.write('--------------------------------------------------------------------------------')
                     f.write('\n')

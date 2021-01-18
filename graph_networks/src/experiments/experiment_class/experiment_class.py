@@ -10,7 +10,7 @@ from sklearn.metrics import precision_recall_fscore_support, accuracy_score
 from src.experiment_scripts.config import MLFLOW_TRACKING_URI, MLFLOW_EXPERIMENT_NAME
 from src.data.data_generators import DataGenerator
 from src.experiments.config import Config
-#from src.util.mlflow_logging import Repository
+# from src.util.mlflow_logging import Repository
 from src.util.plot import create_confusion_matrix
 
 
@@ -20,6 +20,7 @@ class BaseExperiment:
         self.config = config
         self.working_dir: str = None
         self.mlflow_run_id: str = None
+
 
     @abstractmethod
     def setup(self) -> None:
@@ -45,8 +46,7 @@ class BaseExperiment:
     def _initial_log(self) -> None:
         mlflow.set_tracking_uri(MLFLOW_TRACKING_URI)
         mlflow.set_experiment(MLFLOW_EXPERIMENT_NAME)
-        #mlflow.log_params(Repository.get_details())
-
+        # mlflow.log_params(Repository.get_details())
 
     def _get_mlflow_run_id(self) -> str:
         return mlflow.active_run().info.run_uuid
@@ -64,24 +64,25 @@ class Experiment(BaseExperiment):
     def __init__(self, name: str, config: Config
                  ):
         super().__init__(name, config)
+        self.labels = None
         self.train_set: pd.DataFrame = None
         self.val_set: pd.DataFrame = None
-        self.data_generator: DataGenerator = None
-
+        self.model = None
 
     def _initial_log(self) -> None:
         super()._initial_log()
-        mlflow.log_params(self.model.get_details())
-        mlflow.set_tags({
-            "type": "experiment",
-                         })
 
     def _run(self) -> None:
         pass
 
     def _final_log(self) -> None:
         mlflow.log_params(self.config.to_dict())
+        mlflow.log_params(self.model.get_details())
+        mlflow.set_tags({
+            "type": "experiment",
+        })
         self.mlflow_run_id = self._get_mlflow_run_id()
+        mlflow.log_artifacts(self.working_dir)
 
     def cleanup(self) -> None:
         super().cleanup()
@@ -93,31 +94,69 @@ class Experiment(BaseExperiment):
     def _predict(self, x) -> np.ndarray:
         raise NotImplementedError
 
-    def _evaluate_batch(self, x, y_true):
-        y_pred = self._predict(x)
-        self._compute_metrics(y_true, y_pred)
+    def _batches_to_list(self, batch):
+        if self.model.model_type == 'Softmax':
+            return np.asarray([np.where(row == 1)[0][0]
+                               for batch_item in batch
+                               for row in batch_item])
+        else:
+            return np.asarray([[row
+                                for batch_item in batch[0]
+                                for row in batch_item]])
+
+    def _evaluate_batch(self, x, y_true_batch, batch_index=None):
+        y_pred_batch = self._predict(x)
+        y_true = self._batches_to_list(y_true_batch)
+        y_pred = self._batches_to_list(y_pred_batch)
+        self._compute_metrics(y_true, y_pred, batch_index)
 
     def _evaluate(self, data_generator: DataGenerator) -> None:
         print("Start evaluation")
         start = time.time()
-        y_pred, y_true = [], []
-        for iteration in tqdm(range(self.config.n_iter_eval)):
+        x, y_true = data_generator.__getitem__(0)
+        y_pred = self._predict(x)
+        for iteration in tqdm(range(1, self.config.n_iter_eval)):
             x, y = data_generator.__getitem__(iteration)
-            y_true += y
-            y_pred += self._predict(x)
+            y_true = np.append(y_true, self._batches_to_list(y), axis=0)
+            y_pred = np.append(y_pred, self._batches_to_list(self._predict(x)), axis=0)
         end = time.time()
         print("TIME: Finished evaluation of test set in " + str(round(end - start, 3)) + "s")
         self._compute_metrics(y_true, y_pred)
 
-    def _compute_metrics(self, y_true, y_pred):
+    def _compute_metrics(self, y_true, y_pred, batch_index=None):
+
+        if self.config.one_hot:
+            y_true_masked = np.ma.masked_array(y_true, mask=np.where(np.sum(y_true, axis=1) == 0, True, False))
+            y_pred_masked = np.ma.masked_array(y_pred, mask=np.where(np.sum(y_true, axis=1) == 0, True, False))
+            y_true = y_true_masked[~y_true_masked.mask].data
+            y_pred = y_pred_masked[~y_pred_masked.mask].data
+        else:
+            y_true_masked = np.ma.masked_array(y_true, mask=np.where(y_true == -1, True, False))
+            y_pred_masked = np.ma.masked_array(y_pred, mask=np.where(y_true == -1 == 0, True, False))
+            y_true = y_true_masked[~y_true_masked.mask].data
+            y_pred = y_pred_masked[~y_pred_masked.mask].data
+
         precision, rec, f1, sup = precision_recall_fscore_support(np.asarray(y_true),
                                                                   np.asarray(y_pred),
                                                                   average='micro')
+        if self.config.num_classes == 5:
+            labels = ['O', 'I-MONEY', 'I-ORG', 'I-DATE', 'I-GPE']
+        else:
+            labels = self.labels
         acc = accuracy_score(np.asarray(y_true), np.asarray(y_pred))
-        mlflow.log_metric("accuracy", acc)
-        mlflow.log_metric("f1", f1)
-        mlflow.log_metric("recall", rec)
-        mlflow.log_metric("precision", precision)
 
-        create_confusion_matrix(self.working_dir, self.labels, y_true, y_pred)
+        if batch_index is None:
+            mlflow.log_metric("eval_accuracy", acc)
+            mlflow.log_metric("eval_f1", f1)
+            mlflow.log_metric("eval_recall", rec)
+            mlflow.log_metric("eval_precision", precision)
+        else:
+            mlflow.log_metric("final_accuracy", acc)
+            mlflow.log_metric("final_f1", f1)
+            mlflow.log_metric("final_recall", rec)
+            mlflow.log_metric("final_precision", precision)
+
+        y_pred = [self.labels[id] for id in y_pred]
+        y_true = [self.labels[id] for id in y_true]
+        create_confusion_matrix(self.working_dir, labels, batch_index, y_true, y_pred)
         print("Latest f1: {}\nprecision: {}\nrecall: {}".format(f1, precision, rec))

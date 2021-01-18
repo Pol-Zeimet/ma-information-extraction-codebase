@@ -113,10 +113,10 @@ class BertModel:
         recall = recall_score(true_labels, true_predictions)
         f1 = f1_score(true_labels, true_predictions)
 
-        mlflow.log_metric("accuracy", acc)
-        mlflow.log_metric("f1", f1)
-        mlflow.log_metric("recall", recall)
-        mlflow.log_metric("precision", precision)
+        mlflow.log_metric("eval_accuracy", acc)
+        mlflow.log_metric("eval_f1", f1)
+        mlflow.log_metric("eval_recall", recall)
+        mlflow.log_metric("eval_precision", precision)
 
         return {
             "accuracy_score": acc,
