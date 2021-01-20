@@ -99,12 +99,13 @@ class GraphModel:
                                                   self.config.reducer_type,
                                                   self.config.input_units,
                                                   self.config.intermediate_units,
-                                                  self.config.bilstm_units
+                                                  self.config.bilstm_units,
+                                                  adam
                                                   )
 
             self.model.compile(optimizer=adam, loss="categorical_crossentropy", metrics=["accuracy"])
 
-        if self.model_type == "CRF":
+        elif self.model_type == "CRF":
             self.model = GraphModelCRF.create(self.config.node_count,
                                               self.config.edge_count,
                                               self.config.node_vector_length,
@@ -114,11 +115,12 @@ class GraphModel:
                                               self.config.reducer_type,
                                               self.config.input_units,
                                               self.config.intermediate_units,
-                                              self.config.bilstm_units
+                                              self.config.bilstm_units,
+                                              adam
                                               )
             self.model.compile(optimizer=adam, metrics=["accuracy"])
 
-        if self.model_type == "CRFv2":
+        elif self.model_type == "CRFv2":
             self.model = GraphModelCRFv2.create(self.config.node_count,
                                                 self.config.edge_count,
                                                 self.config.node_vector_length,
@@ -128,9 +130,9 @@ class GraphModel:
                                                 self.config.reducer_type,
                                                 self.config.input_units,
                                                 self.config.intermediate_units,
-                                                self.config.bilstm_units
+                                                self.config.bilstm_units,
+                                                adam
                                                 )
-            self.model.compile(optimizer=adam, metrics=["accuracy"], run_eagerly=True)
 
     def train_on_generator(self, train_generator):
         return self.model.fit(verbose=1, x=train_generator, epochs=15, steps_per_epoch=20)
@@ -138,11 +140,23 @@ class GraphModel:
     def train_on_single_batch(self, inputs, targets):
         return self.model.train_on_batch(inputs, [targets])
 
-    def predict(self, x) -> np.ndarray:
-        predicts = self.model.predict(x)
+    def predict(self, x) -> tuple(np.ndarray, np.ndarray):
+        output = self.model.predict(x)
         if self.model_type == 'Softmax':
-            predicts = tf_one_hot(tf_argmax(predicts, axis=2), depth=self.config.num_classes)
-        return predicts
+            predictions = output[0]
+            graph_embeddings = output[1]
+            predictions = tf_one_hot(tf_argmax(predictions, axis=2), depth=self.config.num_classes)
+            predictions = [np.where(labels == 1)[0][0] for prediction in predictions for labels in prediction]
+        else:
+            predictions = output[0][0]
+            graph_embeddings = output[1]
+
+        return predictions, graph_embeddings
+
+    def embed(self, x) -> np.ndarray:
+        output = self.model.predict(x)
+        graph_embeddings = output[1]
+        return graph_embeddings
 
     def save_weights(self, path: str) -> None:
         model_file = path + 'graph_model' + self.config.model_id + '.h5'

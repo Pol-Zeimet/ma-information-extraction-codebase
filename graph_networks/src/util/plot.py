@@ -89,6 +89,8 @@ def plot_confusion_matrix(cm: np.ndarray,
 
 
 def create_confusion_matrix(path: str, classes: List[str], iteration: int, y_true: np.ndarray, y_pred: np.ndarray) -> None:
+    if iteration is None:
+        iteration = "final"
     cm = confusion_matrix(y_true, y_pred, classes)
     fig = plot_confusion_matrix(cm, classes, iteration)
     fig.savefig(path + f"confusion_matrix_{str(iteration)}.png")

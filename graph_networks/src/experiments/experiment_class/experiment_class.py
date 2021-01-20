@@ -94,20 +94,17 @@ class Experiment(BaseExperiment):
     def _predict(self, x) -> np.ndarray:
         raise NotImplementedError
 
-    def _batches_to_list(self, batch):
-        if self.model.model_type == 'Softmax':
-            return np.asarray([np.where(row == 1)[0][0]
-                               for batch_item in batch
-                               for row in batch_item])
-        else:
-            return np.asarray([[row
-                                for batch_item in batch[0]
-                                for row in batch_item]])
+    @staticmethod
+    def _batches_to_list(batch) -> np.array():
+        return np.asarray([[label
+                            for prediction in batch
+                            for label in prediction]])
 
     def _evaluate_batch(self, x, y_true_batch, batch_index=None):
-        y_pred_batch = self._predict(x)
+        y_pred_batch, embeddings = self._predict(x)
         y_true = self._batches_to_list(y_true_batch)
         y_pred = self._batches_to_list(y_pred_batch)
+        self.evaluate_embeddings(embeddings)
         self._compute_metrics(y_true, y_pred, batch_index)
 
     def _evaluate(self, data_generator: DataGenerator) -> None:
