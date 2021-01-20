@@ -80,7 +80,6 @@ class GraphExperiment(Experiment):
 
     def _run(self) -> None:
         super()._run()
-        mlflow.start_run()
         self._train()
         print("Done with train")
         self._evaluate(self.data_generator_validation)

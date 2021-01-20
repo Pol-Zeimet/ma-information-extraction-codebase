@@ -7,6 +7,8 @@ from transformers import Trainer, \
     DataCollatorForTokenClassification, \
     AutoModelForTokenClassification, \
     PreTrainedTokenizerBase
+
+from transformers.integrations import MLflowCallback
 from src.util.metrics.baseline_metrics import accuracy_score, recall_score, precision_score, f1_score
 import mlflow
 
@@ -77,6 +79,8 @@ class BertModel:
             data_collator=data_collator,
             compute_metrics=self._compute_metrics,
         )
+        self.trainer.remove_callback(MLflowCallback)
+
         self.trainer.train(self.model_args.model_name_or_path
                            if os.path.isdir(self.model_args.model_name_or_path)
                            else None)
@@ -108,6 +112,7 @@ class BertModel:
             for prediction, label in zip(predictions, labels)
         ]
 
+        #todo confusion matrix for baseline pls
         acc = accuracy_score(true_labels, true_predictions)
         precision = precision_score(true_labels, true_predictions)
         recall = recall_score(true_labels, true_predictions)

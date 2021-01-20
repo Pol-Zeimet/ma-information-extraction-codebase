@@ -36,8 +36,8 @@ class BaseExperiment:
 
     def run(self) -> None:
         with tempfile.TemporaryDirectory() as tmp_dir:
+            mlflow.start_run()
             self.working_dir = tmp_dir + "/"
-
             self._initial_log()
             self._run()
             self._final_log()
@@ -95,7 +95,7 @@ class Experiment(BaseExperiment):
         raise NotImplementedError
 
     @staticmethod
-    def _batches_to_list(batch) -> np.array():
+    def _batches_to_list(batch) -> np.ndarray():
         return np.asarray([[label
                             for prediction in batch
                             for label in prediction]])

@@ -140,7 +140,7 @@ class GraphModel:
     def train_on_single_batch(self, inputs, targets):
         return self.model.train_on_batch(inputs, [targets])
 
-    def predict(self, x) -> tuple(np.ndarray, np.ndarray):
+    def predict(self, x) -> (np.ndarray, np.ndarray):
         output = self.model.predict(x)
         if self.model_type == 'Softmax':
             predictions = output[0]
