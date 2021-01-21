@@ -103,8 +103,6 @@ class GraphModel:
                                                   adam
                                                   )
 
-            self.model.compile(optimizer=adam, loss="categorical_crossentropy", metrics=["accuracy"])
-
         elif self.model_type == "CRF":
             self.model = GraphModelCRF.create(self.config.node_count,
                                               self.config.edge_count,
@@ -118,7 +116,6 @@ class GraphModel:
                                               self.config.bilstm_units,
                                               adam
                                               )
-            self.model.compile(optimizer=adam, metrics=["accuracy"])
 
         elif self.model_type == "CRFv2":
             self.model = GraphModelCRFv2.create(self.config.node_count,
@@ -138,7 +135,7 @@ class GraphModel:
         return self.model.fit(verbose=1, x=train_generator, epochs=15, steps_per_epoch=20)
 
     def train_on_single_batch(self, inputs, targets):
-        return self.model.train_on_batch(inputs, [targets])
+        return self.model.train_on_batch(inputs, targets)
 
     def predict(self, x) -> (np.ndarray, np.ndarray):
         output = self.model.predict(x)
@@ -147,6 +144,7 @@ class GraphModel:
             graph_embeddings = output[1]
             predictions = tf_one_hot(tf_argmax(predictions, axis=2), depth=self.config.num_classes)
             predictions = [np.where(labels == 1)[0][0] for prediction in predictions for labels in prediction]
+            predictions = np.reshape(predictions, (self.config.batch_size, self.config.node_count))
         else:
             predictions = output[0][0]
             graph_embeddings = output[1]

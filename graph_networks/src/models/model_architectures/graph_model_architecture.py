@@ -116,28 +116,28 @@ class GraphModelSoftmax:
                                        name='graph_conv')
 
         masking = keras.layers.Masking(name='masking')
-        bilstm = layers.Bidirectional(layers.LSTM(bilstm_units, return_sequences=True), name='bilstm')
-        activation = layers.Activation('relu', name='relu_activation')
+        bilstm = layers.Bidirectional(layers.LSTM(bilstm_units, return_sequences=True), name='bilstm', )
+        # activation =  layers.Activation('relu', name = 'relu_activation')
         pre_output_layer = layers.TimeDistributed(layers.Dense(64, activation='relu'))
-        output_layer = layers.TimeDistributed(layers.Dense(num_classes, activation='softmax'))
+        output_layer = layers.TimeDistributed(layers.Dense(num_classes, activation='softmax'), name='outputlayer')
 
         # graph convolution
         nodes = nodes_input
         edges = edges_input
         senders = senders_input
         receivers = receivers_input
-
         mask = masking.compute_mask(nodes)
 
-        for i in range(0, n_folds):
+        for fold in range(n_folds):
             nodes, edges, new_senders, receivers = graph_conv_layer(nodes, edges, senders, receivers)
 
+        # sequence labeling
         graph_embeddings = nodes
 
-        # sequence labeling
         sequence = bilstm(nodes, mask=mask)
-        #activated_sequence = activation(sequence)
+        # activated_sequence = activation(sequence)
         pre_output = pre_output_layer(sequence)
+
         output = output_layer(pre_output)
 
         model = keras.Model(inputs=[nodes_input, edges_input, senders_input, receivers_input],
@@ -168,7 +168,7 @@ class GraphModelCRF:
 
         masking = keras.layers.Masking(name='masking')
         bilstm = layers.Bidirectional(layers.LSTM(bilstm_units, return_sequences=True), name='bilstm')
-        activation = layers.TimeDistributed(layers.Activation('relu'), name='relu_activation')
+        #activation = layers.TimeDistributed(layers.Activation('relu'), name='relu_activation')
         pre_crf_layer_1 = layers.TimeDistributed(layers.Dense(64, activation='relu'), name='pre_crf_layer_1')
         pre_crf_layer_2 = layers.TimeDistributed(layers.Dense(num_classes, activation='softmax'),
                                                  name='pre_crf_layer_2')
@@ -224,7 +224,7 @@ class GraphModelCRFv2:
 
         masking = keras.layers.Masking(name='masking')
         bilstm = layers.Bidirectional(layers.LSTM(bilstm_units, return_sequences=True), name='bilstm')
-        activation = layers.TimeDistributed(layers.Activation('relu'), name='relu_activation')
+        #activation = layers.TimeDistributed(layers.Activation('relu'), name='relu_activation')
         pre_crf_layer_1 = layers.TimeDistributed(layers.Dense(64, activation='relu'), name='pre_crf_layer_1')
         pre_crf_layer_2 = layers.TimeDistributed(layers.Dense(num_classes, activation='softmax'),
                                                  name='pre_crf_layer_2')

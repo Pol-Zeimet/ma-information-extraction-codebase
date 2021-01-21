@@ -94,7 +94,7 @@ class GraphExperiment(Experiment):
         print("Training with {} iterations, batch size={}".format(str(self.config.n_iter_train),
                                                                   str(self.config.batch_size)))
         for iteration in tqdm(range(self.config.n_iter_train)):
-            (inputs, targets) = self.data_generator_train.__getitem__(iteration)
+            inputs, targets = self.data_generator_train.__getitem__(iteration)
             loss = self.model.train_on_single_batch(inputs, targets)
             mlflow.log_metric("loss", loss[0])
             if iteration % 5 == 0:

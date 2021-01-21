@@ -1,8 +1,7 @@
-import os
 from src import GraphExperiment
 from src import GraphNetConfig
 from src import ExperimentPipeline
-
+import os
 os.environ["CUDA_DEVICE_ORDER"]="PCI_BUS_ID"
 os.environ["CUDA_VISIBLE_DEVICES"]="0"
 
@@ -21,10 +20,10 @@ penalty = 0.01
 lr_s = [0.0001, 0.0005, 0.001, 0.005, 0.01]
 train_test_split = 0.25
 exp = []
-model_ids = ['Graph_Model_Softmax_0_fold_5_classes',
-             'Graph_Model_Softmax_1_fold_5_classes',
-             'Graph_Model_Softmax_2_fold_5_classes',
-             'Graph_Model_Softmax_3_fold_5_classes']
+model_ids = ['Graph_Model_CRFv2_0_fold_5_classes',
+             'Graph_Model_CRFv2_1_fold_5_classes',
+             'Graph_Model_CRFv2_2_fold_5_classes',
+             'Graph_Model_CRFv2_3_fold_5_classes']
 
 exp.extend(GraphExperiment(GraphNetConfig(batch_size=batch_size,
                                           n_iter_eval=n_iter_eval,

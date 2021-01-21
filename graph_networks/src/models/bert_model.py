@@ -37,7 +37,6 @@ class BertConfig(Config):
         self.overwrite_output_dir = overwrite_output_dir
 
 
-
 class BertModel:
     def __init__(self, config: BertConfig, training_args, data_args, model_args):
         self.config = config
@@ -54,6 +53,7 @@ class BertModel:
         self.model: AutoModelForTokenClassification = None
         self.tokenizer: PreTrainedTokenizerBase = None
         self.trainer: Trainer = None
+        self.trainer_state = None
         self._create_model_architecture()
 
     def get_details(self) -> Dict[str, Any]:
@@ -69,6 +69,7 @@ class BertModel:
         self.tokenizer, self.model = Bert.create(self.data_args, self.model_args, self.config.num_classes)
 
     def train(self, data):
+        self.trainer_state = 'train'
         data_collator = DataCollatorForTokenClassification(self.tokenizer)
         self.trainer = Trainer(
             model=self.model,
@@ -86,9 +87,11 @@ class BertModel:
                            else None)
 
     def evaluate(self):
+        self.trainer_state = 'evaluate'
         return self.trainer.evaluate()
 
     def predict(self, datasets):
+        self.trainer_state = 'test'
         test_dataset = datasets["test"]
         predictions, labels, metrics = self.trainer.predict(test_dataset)
         predictions = np.argmax(predictions, axis=2)
@@ -118,10 +121,10 @@ class BertModel:
         recall = recall_score(true_labels, true_predictions)
         f1 = f1_score(true_labels, true_predictions)
 
-        mlflow.log_metric("eval_accuracy", acc)
-        mlflow.log_metric("eval_f1", f1)
-        mlflow.log_metric("eval_recall", recall)
-        mlflow.log_metric("eval_precision", precision)
+        mlflow.log_metric(self.trainer_state + "_accuracy", acc)
+        mlflow.log_metric(self.trainer_state + "_f1", f1)
+        mlflow.log_metric(self.trainer_state + "_recall", recall)
+        mlflow.log_metric(self.trainer_state + "_precision", precision)
 
         return {
             "accuracy_score": acc,
