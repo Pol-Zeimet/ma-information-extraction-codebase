@@ -6,6 +6,8 @@ from src.data.data_generators import DataGenerator, DataGeneratorReducedLabels
 from src.experiments.experiment_class.experiment_class import Experiment
 from src.models.graph_model import GraphNetConfig, GraphModel
 from tqdm import tqdm
+from sklearn.decomposition import PCA
+
 
 
 class GraphExperiment(Experiment):
@@ -98,6 +100,13 @@ class GraphExperiment(Experiment):
             loss = self.model.train_on_single_batch(inputs, targets)
             mlflow.log_metric("loss", loss[0])
             if iteration % 5 == 0:
+                inputs_for_embeddings, targets_for_embeddings = self.data_generator_validation.__getitem__(0)
+                tokens, positions = self.data_generator_validation.get_tokens_and_positions(0)
+                super()._evaluate_embeddings(inputs_for_embeddings,
+                                             targets_for_embeddings,
+                                             tokens,
+                                             positions,
+                                             iteration)
                 super()._evaluate_batch(inputs, targets, iteration)
         print("Training done.")
 

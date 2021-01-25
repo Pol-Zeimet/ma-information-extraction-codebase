@@ -3,15 +3,16 @@ import time
 from abc import abstractmethod
 from tqdm import tqdm
 import mlflow
-import numpy as np
-import pandas as pd
 from sklearn.metrics import precision_recall_fscore_support, accuracy_score
-
 from src.experiment_scripts.config import MLFLOW_TRACKING_URI, MLFLOW_EXPERIMENT_NAME
 from src.data.data_generators import DataGenerator
 from src.experiments.config import Config
-# from src.util.mlflow_logging import Repository
-from src.util.plot import create_confusion_matrix
+from src.util.plot import create_confusion_matrix, create_distance_plots, create_embeddings_plot
+from sklearn.decomposition import PCA
+from sklearn.manifold import TSNE
+import numpy as np
+import pandas as pd
+from tensorflow.python.ops import math_ops
 
 
 class BaseExperiment:
@@ -20,7 +21,6 @@ class BaseExperiment:
         self.config = config
         self.working_dir: str = None
         self.mlflow_run_id: str = None
-
 
     @abstractmethod
     def setup(self) -> None:
@@ -104,7 +104,6 @@ class Experiment(BaseExperiment):
         y_pred_batch, embeddings = self._predict(x)
         y_true = self._batches_to_list(y_true_batch)
         y_pred = self._batches_to_list(y_pred_batch)
-        self.evaluate_embeddings(embeddings)
         self._compute_metrics(y_true, y_pred, batch_index)
 
     def _evaluate(self, data_generator: DataGenerator) -> None:
@@ -153,7 +152,63 @@ class Experiment(BaseExperiment):
             mlflow.log_metric("final_recall", rec)
             mlflow.log_metric("final_precision", precision)
 
-        y_pred = [self.labels[id] for id in y_pred]
-        y_true = [self.labels[id] for id in y_true]
-        create_confusion_matrix(self.working_dir, labels, batch_index, y_true, y_pred)
+        y_pred = [self.labels[idx] for idx in y_pred]
+        y_true = [self.labels[idx] for idx in y_true]
+        create_confusion_matrix(self.working_dir, labels, batch_index, np.asarray(y_true), np.asarray(y_pred))
         print("Latest f1: {}\nprecision: {}\nrecall: {}".format(f1, precision, rec))
+
+    def _evaluate_embeddings(self, inputs_batch,
+                             true_labels_batch,
+                             tokens_batch,
+                             positions_batch,
+                             iteration):
+        if iteration != 0:
+            predictions_batch, embeddings_batch, masks_batch = self.model.predict(inputs_batch)
+        else:
+            embeddings_batch = inputs_batch[0]
+            masks_batch = np.any(math_ops.not_equal(inputs_batch[0], 0), axis=-1)
+
+        if self.config.num_classes == 5:
+            labels = ['O', 'I-MONEY', 'I-ORG', 'I-DATE', 'I-GPE']
+        else:
+            # wir gruppieren die B, I und L Label zusammen
+            labels = ['O',
+                      'I-MONEY', 'I-MONEY', 'I-MONEY',
+                      'I-ORG', 'I-ORG', 'I-ORG',
+                      'I-DATE', 'I-DATE', 'I-DATE',
+                      'I-GPE', 'I-GPE', 'I-GPE']
+
+        embeddings_list = []
+        label_list = []
+        for e, l, m in zip(embeddings_batch, true_labels_batch, masks_batch):
+            cutoff = np.argwhere(m == False)[0][0]
+            embeddings_list.append(e[:cutoff])
+            l = l[:cutoff]
+            l = [labels[np.where(one_hot == 1)[0][0]] for one_hot in l]
+            label_list.append(l)
+
+        embeddings = np.concatenate(embeddings_list)
+        labels = np.concatenate(label_list)
+        tokens = np.concatenate(tokens_batch)
+        # positions = np.concatenate(positions_batch)
+
+        print("Run PCA 70 ...")
+        pca_70 = PCA(n_components=70)
+        pca_result_70 = pca_70.fit_transform(embeddings)
+
+        print("Run T-SNE...")
+        transformed = TSNE(n_components=2, verbose=1, perplexity=50).fit_transform(pca_result_70)
+
+        df = pd.DataFrame()
+        df['tsne-2d-one'] = transformed[:, 0]
+        df['tsne-2d-two'] = transformed[:, 1]
+        df['label'] = labels
+        df['token'] = tokens
+
+        df = df.sort_values(['label'])
+
+        print(f"Create embeddings plot: ...")
+        create_embeddings_plot(self.working_dir, iteration, df)
+
+        print(f"Create distance plot: ...")
+        create_distance_plots(self.working_dir, df, embeddings, iteration)

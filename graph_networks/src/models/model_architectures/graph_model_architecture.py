@@ -88,8 +88,6 @@ class GraphConvV2(keras.layers.Layer):
 
         nodes = tf.reshape(combined_graphs_tuple.nodes, [batch_size, num_nodes, self.node_shape])
         edges = tf.reshape(combined_graphs_tuple.edges, [batch_size, num_edges, self.edges_shape])
-        senders = tf.reshape(combined_graphs_tuple.senders, [batch_size, num_edges])
-        receivers = tf.reshape(combined_graphs_tuple.receivers, [batch_size, num_edges])
 
         return nodes, edges, senders, receivers
 

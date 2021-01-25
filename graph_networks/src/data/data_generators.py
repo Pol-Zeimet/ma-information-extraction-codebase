@@ -1,11 +1,13 @@
 from tensorflow import keras
 import numpy as np
 import os
+import pandas as pd
 
 
 class DataGenerator(keras.utils.Sequence):
     def __init__(self, graph_src, label_src, labels, slugs, batch_size=32, node_count=512, node_shape=768,
-                 edge_count=40000, edge_shape=5, shuffle=True, one_hot=False):
+                 edge_count=40000, edge_shape=5, shuffle=True, one_hot=False,
+                 additional_data='/content/drive/MyDrive/ma-information-extraction-codebase/graph_networks/data/SROIE/results_df.json'):
         # Initialization
         self.graph_src = graph_src
         self.label_src = label_src
@@ -21,6 +23,8 @@ class DataGenerator(keras.utils.Sequence):
         self.index_list = []
         self.on_epoch_end()
         self.one_hot = one_hot
+        self.additional_data_df = pd.read_json(additional_data)
+        self.max_X_pos, self.max_Y_pos = self.get_max_positions()
 
     def __len__(self):
         # Denotes the number of batches per epoch
@@ -38,6 +42,31 @@ class DataGenerator(keras.utils.Sequence):
         X, y = self.__data_generation(list_slugs_temp)
 
         return X, y
+
+
+    def get_max_positions(self):
+        # positions shape = [[x1,y1,..., x4,y4], ...,[x1,y1,..., x4,y4]]
+        # with clockwise corner positions starting top left
+        positions = self.additional_data_df.position
+        max_x = max([float(box[5]) for box in positions])
+        max_y = max([float(box[6]) for box in positions])
+        return max_x, max_y
+
+    def get_tokens_and_positions(self, index):
+        indexes = self.index_list[index * self.batch_size:(index + 1) * self.batch_size]
+        aggregated_tokens = []
+        aggregated_positions = []
+        for slug in [self.list_slugs[k] for k in indexes]:
+            subset = self.additional_data_df[self.additional_data_df.slug == slug]
+            aggregated_positions.append([[1000 * float(subset.position[i][0]) / self.max_X_pos,
+                                          1000 * float(subset.position[i][1]) / self.max_Y_pos,
+                                          1000 * float(subset.position[i][4]) / self.max_X_pos,
+                                          1000 * float(subset.position[i][5]) / self.max_Y_pos]
+                                         for i, row in subset.iterrows() for subset_token_i in subset.tokens[i]])
+            aggregated_tokens.append([token for subset_tokens in subset.tokens for token in subset_tokens])
+        return aggregated_tokens, aggregated_positions
+
+
 
     def on_epoch_end(self):
         # Updates indexes after each epoch
@@ -94,7 +123,8 @@ class DataGenerator(keras.utils.Sequence):
 
 class DataGeneratorReducedLabels(keras.utils.Sequence):
     def __init__(self, graph_src, label_src, labels, slugs, batch_size=32, node_count=512, node_shape=768,
-                 edge_count=40000, edge_shape=5, shuffle=True, one_hot=False):
+                 edge_count=40000, edge_shape=5, shuffle=True, one_hot=False,
+                 additional_data='/content/drive/MyDrive/ma-information-extraction-codebase/graph_networks/data/SROIE/results_df.json'):
         # Initialization
         self.graph_src = graph_src
         self.label_src = label_src
@@ -110,6 +140,8 @@ class DataGeneratorReducedLabels(keras.utils.Sequence):
         self.index_list = []
         self.on_epoch_end()
         self.one_hot = one_hot
+        self.additional_data_df = pd.read_json(additional_data)
+        self.max_X_pos, self.max_Y_pos = self.get_Max_positions()
 
     def __len__(self):
         # Denotes the number of batches per epoch
@@ -127,6 +159,28 @@ class DataGeneratorReducedLabels(keras.utils.Sequence):
         X, y = self.__data_generation(list_slugs_temp)
 
         return X, y
+
+    def get_Max_positions(self):
+        # positions shape = [[x1,y1,..., x4,y4], ...,[x1,y1,..., x4,y4]]
+        # with clockwise corner positions starting top left
+        positions = self.additional_data_df.position
+        max_X = max([float(box[5]) for box in positions])
+        max_Y = max([float(box[6]) for box in positions])
+        return max_X, max_Y
+
+    def get_tokens_and_positions(self, index):
+        indexes = self.index_list[index * self.batch_size:(index + 1) * self.batch_size]
+        aggregated_tokens = []
+        aggregated_positions = []
+        for slug in [self.list_slugs[k] for k in indexes]:
+            subset = self.additional_data_df[self.additional_data_df.slug == slug]
+            aggregated_positions.append([[1000 * float(subset.position[i][0]) / self.max_X_pos,
+                                          1000 * float(subset.position[i][1]) / self.max_Y_pos,
+                                          1000 * float(subset.position[i][4]) / self.max_X_pos,
+                                          1000 * float(subset.position[i][5]) / self.max_Y_pos]
+                                         for i, row in subset.iterrows() for subset_token_i in subset.tokens[i]])
+            aggregated_tokens.append([token for subset_tokens in subset.tokens for token in subset_tokens])
+        return aggregated_tokens, aggregated_positions
 
     def on_epoch_end(self):
         # Updates indexes after each epoch

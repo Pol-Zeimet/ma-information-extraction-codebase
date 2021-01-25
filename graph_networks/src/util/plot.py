@@ -1,9 +1,127 @@
+
+from sklearn.metrics.pairwise import cosine_similarity
 import itertools
-from typing import List, Tuple, Dict
+from typing import List, Tuple
 import matplotlib.pyplot as plt
 import numpy as np
+import pandas as pd
+import seaborn as sns
 from matplotlib.figure import Figure
 from sklearn.metrics import confusion_matrix
+
+
+def get_intra(matrix: np.ndarray, labels: pd.Series) -> Tuple[List[List[float]], List[str]]:
+    """ Assumes that sample is already ordered by labels. """
+    first_idx = 0
+    final_idx = 0
+    classes = list(labels.unique())
+    vc = labels.value_counts()
+    result = []
+    for c in classes:
+        final_idx += vc[c]
+        subset = matrix[first_idx:final_idx, first_idx:final_idx]
+        subset = np.triu(subset)
+        subset = [i for i in subset.flatten().tolist() if i != 0.0]
+        result.append(subset)
+        first_idx = final_idx
+    return result, classes
+def get_inter(matrix: np.ndarray, labels: pd.Series) -> Tuple[List[List[float]], List[str]]:
+    """ Assumes that sample is already ordered by labels. """
+    first_idx = 0
+    final_idx = 0
+    classes = list(labels.unique())
+    vc = labels.value_counts()
+    result = []
+    for c in classes:
+        final_idx += vc[c]
+        subset = np.delete(matrix[first_idx:final_idx, :], range(first_idx, final_idx), axis=1)
+        result.append(subset.flatten().tolist())
+        first_idx = final_idx
+    return result, classes
+
+def compute_distance(ref_embeddings):
+    '''
+    Computes sum of distances between all classes embeddings on our reference test image:
+        d(0,1) + d(0,2) + ... + d(0,9) + d(1,2) + d(1,3) + ... d(8,9)
+        A good model should have a large distance between all theses embeddings
+    Returns:
+        array of shape (nb_classes,nb_classes)
+    '''
+    return cosine_similarity(ref_embeddings)
+
+
+
+def plot_distance_boxplot(matrix: np.ndarray, classes: List[str], n_iteration: int, type: str, figsize: Tuple=(16, 9)) -> Figure:
+    if type == "intra":
+        data, class_ticks = get_intra(matrix, classes)
+    else:
+        data, class_ticks = get_inter(matrix, classes)
+
+    fig, ax = plt.subplots(figsize=figsize)
+    ax.set_title(f'Evaluating {type} embeddings distance from each other after {n_iteration} iterations')
+    plt.xlabel('Classes')
+    plt.ylabel('Distance')
+    ax.boxplot(data, showfliers=False, showbox=True)
+    locs, labels = plt.xticks()
+    plt.xticks(locs, class_ticks, rotation=90)
+    plt.ylim(-0.05, 1.05)
+    plt.show()
+    plt.close()
+
+    return fig
+
+def label_point(x, y, val, ax):
+    a = pd.concat({'x': x, 'y': y, 'val': val}, axis=1)
+    for i, point in a.iterrows():
+        ax.text(point['x']+.02, point['y'], str(point['val']))
+
+
+
+def plot_density(name: str, train: pd.DataFrame, val: pd.DataFrame, test: pd.DataFrame, label: str, figsize: Tuple=(12,5)) -> Figure:
+    fig, ax = plt.subplots(figsize=figsize)
+    plot_df = pd.concat([train[label], val[label], test[label]], axis=1)
+    plot_df.columns = [f"train (#samples: {len(train)})",
+                       f"val (#samples: {len(val)})",
+                       f"test (#samples: {len(test)})"]
+    plot_df.plot.density(ax=ax)
+    plt.ylabel("Relative frequency")
+    plt.xlabel(f"{label}")
+    plt.title(f"{name}: density of '{label}' over data splits")
+    plt.show()
+    plt.close()
+
+    return fig
+
+
+def plot_embeddings(iteration: int, df: pd.DataFrame, figsize=(30,17)) -> Figure:
+    fig, ax = plt.subplots(figsize=figsize)
+    sns.scatterplot(
+        x="tsne-2d-one", y="tsne-2d-two",
+        hue="label",
+        data=df,
+        legend="full",
+        ax = ax
+    )
+    plt.title(f" 2D T-SNE embeddings - {str(iteration)}")
+    label_point(df["tsne-2d-one"], df["tsne-2d-two"], df['token'], plt.gca())
+    plt.show()
+    plt.close()
+
+    return fig
+
+
+def create_distance_plots(path: str, df: pd.DataFrame, embeddings: np.ndarray,iteration: int) -> None:
+    distances = compute_distance(embeddings)
+    fig_intra =  plot_distance_boxplot(distances, df["label"], iteration, "intra", figsize=(16, 9))
+    fig_intra.savefig(path + f"intra_class_distances__{str(iteration)}")
+
+    fig_inter = plot_distance_boxplot(distances, df["label"], iteration, "inter", figsize=(16, 9))
+    fig_inter.savefig(path + f"inter_class_distances__{str(iteration)}")
+
+
+def create_embeddings_plot(path: str, iteration: int, df: pd.DataFrame) -> None:
+    fig = plot_embeddings(iteration, df)
+    fig.savefig(path + f"embeddings__{iteration}")
 
 
 def plot_confusion_matrix(cm: np.ndarray,
@@ -94,3 +212,4 @@ def create_confusion_matrix(path: str, classes: List[str], iteration: int, y_tru
     cm = confusion_matrix(y_true, y_pred, classes)
     fig = plot_confusion_matrix(cm, classes, iteration)
     fig.savefig(path + f"confusion_matrix_{str(iteration)}.png")
+
