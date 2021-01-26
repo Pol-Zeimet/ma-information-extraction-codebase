@@ -140,12 +140,14 @@ class BertExperiment(Experiment):
 
     def _evaluate(self):
         start = time.time()
-        results = self.model.evaluate()
+        results, distances = self.model.evaluate()
         end = time.time()
         print("TIME: Finished evaluation set in " + str(round(end - start, 3)) + "s")
         if self.config.logging:
             self.logger.info("***** Eval results *****")
             for key, value in results.items():
+                self.logger.info(f"  {key} = {value}")
+            for key, value in distances.items():
                 self.logger.info(f"  {key} = {value}")
 
     @staticmethod

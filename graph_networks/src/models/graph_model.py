@@ -142,14 +142,16 @@ class GraphModel:
         if self.model_type == 'Softmax':
             predictions = output[0]
             graph_embeddings = output[1]
+            masks  = [np.argwhere(mask == False)[0][0] for mask in output[2]]
             predictions = tf_one_hot(tf_argmax(predictions, axis=2), depth=self.config.num_classes)
             predictions = [np.where(labels == 1)[0][0] for prediction in predictions for labels in prediction]
             predictions = np.reshape(predictions, (self.config.batch_size, self.config.node_count))
         else:
             predictions = output[0][0]
+            masks = output[0][-2]
             graph_embeddings = output[1]
 
-        return predictions, graph_embeddings
+        return predictions, graph_embeddings, masks
 
     def embed(self, x) -> np.ndarray:
         output = self.model.predict(x)

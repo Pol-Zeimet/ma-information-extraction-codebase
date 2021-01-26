@@ -25,6 +25,7 @@ def get_intra(matrix: np.ndarray, labels: pd.Series) -> Tuple[List[List[float]],
         result.append(subset)
         first_idx = final_idx
     return result, classes
+    
 def get_inter(matrix: np.ndarray, labels: pd.Series) -> Tuple[List[List[float]], List[str]]:
     """ Assumes that sample is already ordered by labels. """
     first_idx = 0
@@ -51,14 +52,14 @@ def compute_distance(ref_embeddings):
 
 
 
-def plot_distance_boxplot(matrix: np.ndarray, classes: List[str], n_iteration: int, type: str, figsize: Tuple=(16, 9)) -> Figure:
+def plot_distance_boxplot(matrix: np.ndarray, classes: List[str], n_iteration, type: str, figsize: Tuple=(16, 9)) -> Figure:
     if type == "intra":
         data, class_ticks = get_intra(matrix, classes)
     else:
         data, class_ticks = get_inter(matrix, classes)
 
     fig, ax = plt.subplots(figsize=figsize)
-    ax.set_title(f'Evaluating {type} embeddings distance from each other after {n_iteration} iterations')
+    ax.set_title(f'Evaluating {type} embeddings distance from each other afer iteration {n_iteration} ')
     plt.xlabel('Classes')
     plt.ylabel('Distance')
     ax.boxplot(data, showfliers=False, showbox=True)
@@ -73,7 +74,13 @@ def plot_distance_boxplot(matrix: np.ndarray, classes: List[str], n_iteration: i
 def label_point(x, y, val, ax):
     a = pd.concat({'x': x, 'y': y, 'val': val}, axis=1)
     for i, point in a.iterrows():
-        ax.text(point['x']+.02, point['y'], str(point['val']))
+        ax.text(point['x']+.02, 
+                point['y'],
+                str(point['val']),
+                {'color':  'black',
+                  'weight': 'light',
+                  'size': 6,
+                  })
 
 
 
@@ -93,11 +100,12 @@ def plot_density(name: str, train: pd.DataFrame, val: pd.DataFrame, test: pd.Dat
     return fig
 
 
-def plot_embeddings(iteration: int, df: pd.DataFrame, figsize=(30,17)) -> Figure:
+def plot_embeddings(iteration, df: pd.DataFrame, figsize=(30,17)) -> Figure:
     fig, ax = plt.subplots(figsize=figsize)
     sns.scatterplot(
         x="tsne-2d-one", y="tsne-2d-two",
         hue="label",
+        style = "truth_matching",
         data=df,
         legend="full",
         ax = ax
@@ -110,7 +118,7 @@ def plot_embeddings(iteration: int, df: pd.DataFrame, figsize=(30,17)) -> Figure
     return fig
 
 
-def create_distance_plots(path: str, df: pd.DataFrame, embeddings: np.ndarray,iteration: int) -> None:
+def create_distance_plots(path: str, df: pd.DataFrame, embeddings: np.ndarray,iteration) -> None:
     distances = compute_distance(embeddings)
     fig_intra =  plot_distance_boxplot(distances, df["label"], iteration, "intra", figsize=(16, 9))
     fig_intra.savefig(path + f"intra_class_distances__{str(iteration)}")

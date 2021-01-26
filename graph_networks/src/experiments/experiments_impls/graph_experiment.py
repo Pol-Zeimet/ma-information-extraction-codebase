@@ -23,6 +23,10 @@ class GraphExperiment(Experiment):
         self.slug_src = slug_src
         self.labels = labels
         self.model = None
+        self.inputs_for_embeddings = None
+        self.targets_for_embeddings = None
+        self.tokens_for_embeddings = None
+        self.positions_for_embeddings = None
 
     def setup(self):
         self.all_slugs = np.load(self.slug_src)
@@ -95,19 +99,27 @@ class GraphExperiment(Experiment):
     def _train(self) -> None:
         print("Training with {} iterations, batch size={}".format(str(self.config.n_iter_train),
                                                                   str(self.config.batch_size)))
+        
+        self.inputs_for_embeddings, self.targets_for_embeddings = self.data_generator_validation.__getitem__(0)
+        self.tokens_for_embeddings, positions_for_embeddings = self.data_generator_validation.get_tokens_and_positions(0)
+        super()._evaluate_embeddings(self.inputs_for_embeddings,
+                                             self.targets_for_embeddings,
+                                             self.tokens_for_embeddings,
+                                             self.positions_for_embeddings,
+                                             iteration = 'init')
+
         for iteration in tqdm(range(self.config.n_iter_train)):
             inputs, targets = self.data_generator_train.__getitem__(iteration)
             loss = self.model.train_on_single_batch(inputs, targets)
             mlflow.log_metric("loss", loss[0])
             if iteration % 5 == 0:
-                inputs_for_embeddings, targets_for_embeddings = self.data_generator_validation.__getitem__(0)
-                tokens, positions = self.data_generator_validation.get_tokens_and_positions(0)
-                super()._evaluate_embeddings(inputs_for_embeddings,
-                                             targets_for_embeddings,
-                                             tokens,
-                                             positions,
+                super()._evaluate_embeddings(self.inputs_for_embeddings,
+                                             self.targets_for_embeddings,
+                                             self.tokens_for_embeddings,
+                                             self.positions_for_embeddings,
                                              iteration)
-                super()._evaluate_batch(inputs, targets, iteration)
+                tokens, positions = self.data_generator_validation.get_tokens_and_positions(iteratio)
+                super()._evaluate_batch(inputs, targets, tokens, positions, iteration)
         print("Training done.")
 
     def _evaluate(self, data_generator: DataGenerator) -> None:
