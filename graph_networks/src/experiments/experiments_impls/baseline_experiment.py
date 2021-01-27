@@ -163,8 +163,7 @@ class BertExperiment(Experiment):
         super()._run_holdout()
 
     def _final_log(self) -> None:
-        # Todo
-        pass
+        mlflow.log_artifacts(self.working_dir)
 
     def _setup_logging(self):
         self.logger = logging.getLogger(__name__)
@@ -185,6 +184,7 @@ class BertExperiment(Experiment):
             transformer_logging.enable_explicit_format()
 
         self.logger.info("Training/evaluation parameters %s", self.training_args)
+        mlflow.log_param("Training/evaluation parameters", self.training_args)
 
     def cleanup(self):
         super().cleanup()

@@ -12,13 +12,14 @@ from sklearn.decomposition import PCA
 
 class GraphExperiment(Experiment):
 
-    def __init__(self, config: GraphNetConfig, data_src: str, label_src: str, slug_src: str, labels: list):
+    def __init__(self, config: GraphNetConfig, data_src: str, label_src: str, slug_src: str, additional_data_src: str, labels: list):
         super().__init__(config.model_id, config)
         self.data_generator_train: DataGenerator = None
         self.data_generator_validation: DataGenerator = None
 
         self.data_src = data_src
         self.label_src = label_src
+        self.additional_data_src = additional_data_src
         self.all_slugs: list = None
         self.slug_src = slug_src
         self.labels = labels
@@ -38,6 +39,7 @@ class GraphExperiment(Experiment):
                                                                    label_src=self.label_src,
                                                                    labels=self.labels,
                                                                    slugs=train_slugs,
+                                                                   additional_data_src=self.additional_data_src,
                                                                    node_shape=self.config.node_vector_length,
                                                                    node_count=self.config.node_count,
                                                                    edge_shape=self.config.edge_vector_length,
@@ -50,6 +52,7 @@ class GraphExperiment(Experiment):
                                                                         label_src=self.label_src,
                                                                         labels=self.labels,
                                                                         slugs=validation_slugs,
+                                                                        additional_data_src=self.additional_data_src,
                                                                         node_shape=self.config.node_vector_length,
                                                                         node_count=self.config.node_count,
                                                                         edge_shape=self.config.edge_vector_length,
@@ -62,6 +65,7 @@ class GraphExperiment(Experiment):
                                                       label_src=self.label_src,
                                                       labels=self.labels,
                                                       slugs=train_slugs,
+                                                      additional_data_src=self.additional_data_src,
                                                       node_shape=self.config.node_vector_length,
                                                       node_count=self.config.node_count,
                                                       edge_shape=self.config.edge_vector_length,
@@ -74,6 +78,7 @@ class GraphExperiment(Experiment):
                                                            label_src=self.label_src,
                                                            labels=self.labels,
                                                            slugs=validation_slugs,
+                                                           additional_data_src=self.additional_data_src,
                                                            node_shape=self.config.node_vector_length,
                                                            node_count=self.config.node_count,
                                                            edge_shape=self.config.edge_vector_length,
@@ -118,7 +123,7 @@ class GraphExperiment(Experiment):
                                              self.tokens_for_embeddings,
                                              self.positions_for_embeddings,
                                              iteration)
-                tokens, positions = self.data_generator_validation.get_tokens_and_positions(iteratio)
+                tokens, positions = self.data_generator_train.get_tokens_and_positions(iteration)
                 super()._evaluate_batch(inputs, targets, tokens, positions, iteration)
         print("Training done.")
 
@@ -133,5 +138,5 @@ class GraphExperiment(Experiment):
         raise NotImplementedError
 
     def _final_log(self) -> None:
-        # Todo
-        pass
+        super()._final_log()
+        

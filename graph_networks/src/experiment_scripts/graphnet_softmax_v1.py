@@ -45,8 +45,9 @@ exp.extend(GraphExperiment(GraphNetConfig(batch_size=batch_size,
                                           lr=lr,
                                           shuffle=True,
                                           one_hot=True if model_id.split('_')[2] == 'Softmax' else False),
-                           data_src=os.path.abspath('ma-information-extraction-codebase/graph_networks/data/SROIE/graphs/'),
-                           label_src=os.path.abspath('ma-information-extraction-codebase/graph_networks/data/SROIE/labels/'),
+                            data_src=os.path.abspath('ma-information-extraction-codebase/graph_networks/data/SROIE/graphs/'),
+                            label_src=os.path.abspath('ma-information-extraction-codebase/graph_networks/data/SROIE/labels/'),
+                            additional_data_src = os.path.abspath('ma-information-extraction-codebase/graph_networks/data/SROIE/results_df.json'),
                            labels=labels,
                            slug_src=os.path.abspath('ma-information-extraction-codebase/graph_networks/data/SROIE/slugs.npy'))
            for model_id in model_ids for lr in lr_s)

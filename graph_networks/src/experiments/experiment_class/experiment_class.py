@@ -77,6 +77,7 @@ class Experiment(BaseExperiment):
         pass
 
     def _final_log(self) -> None:
+        print("starting final log")
         mlflow.log_params(self.config.to_dict())
         mlflow.log_params(self.model.get_details())
         mlflow.set_tags({
@@ -98,15 +99,14 @@ class Experiment(BaseExperiment):
     def _evaluate_batch(self, x, y_true_batch, tokens, positions, batch_index=None):
         y_pred_batch, embeddings, masks = self._predict(x)
         predictions, truth = [], []
-        for pred, true, mask in zip(y_pred_batch, y_true_batch, masks) :
-            predictions.append(pred[:m])
+        for pred, true, mask_length in zip(y_pred_batch, y_true_batch, masks) :
+            predictions.append(pred[:mask_length])
             if self.config.one_hot:
-                truth.append([np.argwhere(one_hot == 1)[0][0] for one_hot in true[:m]]
+                truth.append([np.argwhere(one_hot == 1)[0][0] for one_hot in true[:mask_length]])
             else:
-                truth.append(true[:m])
+                truth.append(true[:mask_length])
         y_true = np.concatenate(truth)
         y_pred = np.concatenate(predictions)
-        tokens = np.concatenate(tokens)
         positions = np.concatenate(positions)
         self._compute_metrics(y_true, y_pred, batch_index)
         self._compute_levenshtein(truth, predictions, tokens)
@@ -117,27 +117,31 @@ class Experiment(BaseExperiment):
         y_true, y_pred = [],[]
         y_true_batched, y_pred_batched, tokens_batched = [],[],[]
         for iteration in tqdm(range(0, self.config.n_iter_eval)):
-            x, y = data_generator.__getitem__(iteration)
-            tokens, positions = data_generator_validation.get_tokens_and_positions(iteration)
+            x, y = self.data_generator_validation.__getitem__(iteration)
+            tokens, positions = self.data_generator_validation.get_tokens_and_positions(iteration)
             predictions, embeddings, masks = self._predict(x)
             predictions_list, truth = [], []
-            for pred, true, mask in zip(predictions, y, masks):
-                predictions_list.append(pred[:m])
+            for pred, true, mask_length in zip(predictions, y, masks):
+                predictions_list.append(pred[:mask_length])
                 if self.config.one_hot:
-                    truth.append([np.argwhere(one_hot == 1)[0][0] for one_hot in true[:m]]
+                    truth.append([np.argwhere(one_hot == 1)[0][0] for one_hot in true[:mask_length]])
                 else:
-                    truth.append(true[:m])
-            tokens_batched = np.append(tokens_batched, tokens, axis =1)
-            y_true_batched = np.append(y_true_batched,truth, axis = 1)
-            y_pred_batched = np.append(y_pred_batched, predictions_list, axis =1)
+                    truth.append(true[:mask_length])
+            tokens_batched.append(tokens)
+            y_true_batched.append(truth)
+            y_pred_batched.append(predictions_list)
             y_true.append(np.concatenate(truth))
             y_pred.append(np.concatenate(predictions_list))
         end = time.time()
+
+        tokens_batched = np.concatenate(tokens_batched)
+        y_true_batched = np.concatenate(y_true_batched)
+        y_pred_batched = np.concatenate(y_pred_batched)
         y_true = np.concatenate(y_true)
         y_pred = np.concatenate(y_pred)
         print("TIME: Finished evaluation of test set in " + str(round(end - start, 3)) + "s")
         self._compute_metrics(y_true, y_pred)
-        self._compute_levenshtein(y_true_batched, y_pred_batched, tokens)
+        self._compute_levenshtein(y_true_batched, y_pred_batched, tokens_batched)
 
     def _compute_metrics(self, y_true, y_pred, batch_index=None):
 
@@ -151,15 +155,15 @@ class Experiment(BaseExperiment):
         acc = accuracy_score(np.asarray(y_true), np.asarray(y_pred))
 
         if batch_index is None:
-            mlflow.log_metric("eval_accuracy", acc)
-            mlflow.log_metric("eval_f1", f1)
-            mlflow.log_metric("eval_recall", rec)
-            mlflow.log_metric("eval_precision", precision)
-        else:
             mlflow.log_metric("final_accuracy", acc)
             mlflow.log_metric("final_f1", f1)
             mlflow.log_metric("final_recall", rec)
             mlflow.log_metric("final_precision", precision)
+        else:
+            mlflow.log_metric("eval_accuracy", acc)
+            mlflow.log_metric("eval_f1", f1)
+            mlflow.log_metric("eval_recall", rec)
+            mlflow.log_metric("eval_precision", precision)
 
         y_pred = [self.labels[idx] for idx in y_pred]
         y_true = [self.labels[idx] for idx in y_true]
@@ -173,7 +177,7 @@ class Experiment(BaseExperiment):
                              positions_batch,
                              iteration):
         
-        predictions_batch, embeddings_batch, masks_batch = self.model.predict(inputs_batch)
+        predictions_batch, embeddings_batch, mask_lengths = self.model.predict(inputs_batch)
         if iteration == 'init':
             embeddings_batch = inputs_batch[0]
         
@@ -191,16 +195,13 @@ class Experiment(BaseExperiment):
         embeddings_list = []
         label_list = []
         truth_list = []
-        for e, l, m in zip(embeddings_batch, true_labels_batch, masks_batch):
+        for e, l, m in zip(embeddings_batch, true_labels_batch, mask_lengths):
+            
+            embeddings_list.append(e[:m])
+            l = l[:m]
             if self.config.one_hot:
-                cutoff = np.argwhere(m == False)[0][0]
-            else:
-                cutoff = m
-            embeddings_list.append(e[:cutoff])
-            l = l[:cutoff]
-            if self.config.one_hot:
-                l = [labels[np.argwhere(one_hot == 1)[0][0]] for one_hot in l]
                 tr = [np.argwhere(one_hot == 1)[0][0] for one_hot in l]
+                l = [labels[idx] for idx in tr]
             truth_list.append(tr)
             label_list.append(l)
 
@@ -243,10 +244,9 @@ class Experiment(BaseExperiment):
         date_distances = []
 
         for pred, true, token in zip(y_pred, y_true, tokens):   
-            true_addr,true_org, true_tota, true_date = [],[],[],[]
+            true_addr,true_org, true_total, true_date = [],[],[],[]
             addr,org,total,date = [],[],[],[]
-            
-            for idx, pred_label, true_label in enumerate(zip(pred,true)):
+            for idx, (pred_label, true_label) in enumerate(zip(pred,true)):
                 if pred_label == 1:
                     total.append(token[idx])
                 elif pred_label == 2:
@@ -286,18 +286,31 @@ class Experiment(BaseExperiment):
         mean_org_distances = mean(org_distances)
         mean_total_distances = mean(total_distances)
         mean_date_distances = mean(date_distances)
-        total_mean = sum(mean_addr_distances, mean_org_distances, mean_total_distances, mean_date_distances)
+        total_mean = mean_addr_distances + mean_org_distances + mean_total_distances + mean_date_distances
 
         if len(y_true) == self.config.batch_size:
-            mlflow.log_metric('eval_mean_addr_distances', mean_addr_distances')
-            mlflow.log_metric('eval_mean_org_distances', mean_org_distances')
-            mlflow.log_metric('eval_mean_total_distances', mean_total_distances')
-            mlflow.log_metric('eval_mean_date_distances', mean_date_distances')
-            mlflow.log_metric('eval_total_mean', total_mean')
+            mlflow.log_metric('eval_mean_addr_distances', mean_addr_distances)
+            mlflow.log_metric('eval_mean_org_distances', mean_org_distances)
+            mlflow.log_metric('eval_mean_total_distances', mean_total_distances)
+            mlflow.log_metric('eval_mean_date_distances', mean_date_distances)
+            mlflow.log_metric('eval_total_mean', total_mean)
+            print("Latest levenshtein:")
+            print(f"mean addr distances: {mean_addr_distances}")
+            print(f"mean org distances: {mean_org_distances}")
+            print(f"mean total distances: {mean_total_distances}")
+            print(f"mean date distances: {mean_date_distances}")
+            print(f"total mean: {total_mean}")
 
-        if len(y_true) == self.config.batch_size:
-            mlflow.log_metric('final_mean_addr_distances', mean_addr_distances')
-            mlflow.log_metric('final_mean_org_distances', mean_org_distances')
-            mlflow.log_metric('final_mean_total_distances', mean_total_distances')
-            mlflow.log_metric('final_mean_date_distances', mean_date_distances')
-            mlflow.log_metric('final_total_mean', total_mean')
+
+        if len(y_true) != self.config.batch_size:
+            mlflow.log_metric('final_mean_addr_distances', mean_addr_distances)
+            mlflow.log_metric('final_mean_org_distances', mean_org_distances)
+            mlflow.log_metric('final_mean_total_distances', mean_total_distances)
+            mlflow.log_metric('final_mean_date_distances', mean_date_distances)
+            mlflow.log_metric('final_total_mean', total_mean)
+            print("Final levenshtein:")
+            print(f"mean addr distances: {mean_addr_distances}")
+            print(f"mean org distances: {mean_org_distances}")
+            print(f"mean total distances: {mean_total_distances}")
+            print(f"mean date distances: {mean_date_distances}")
+            print(f"total mean: {total_mean}")

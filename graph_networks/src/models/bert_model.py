@@ -198,17 +198,17 @@ class BertModel:
             true_org, true_total, true_addr, true_date = [],[],[],[]
 
             for pair in zip(token, true):
-            text, label = pair[0], pair[1]
-            if label != 'O':
-                tag = label.split('-')[-1]
-            if tag == 'ORG':
-                true_org.append(text)   
-            elif tag == 'GPE':
-                true_addr.append(text)
-            elif tag == 'DATE':
-                true_date.append(text)
-            elif tag == 'MONEY':
-                true_total.append(text)
+              text, label = pair[0], pair[1]
+              if label != 'O':
+                  tag = label.split('-')[-1]
+              if tag == 'ORG':
+                  true_org.append(text)   
+              elif tag == 'GPE':
+                  true_addr.append(text)
+              elif tag == 'DATE':
+                  true_date.append(text)
+              elif tag == 'MONEY':
+                  true_total.append(text)
 
 
             true_addr_text = ' '.join(true_addr).strip()
@@ -232,7 +232,7 @@ class BertModel:
         mean_org_distances = mean(org_distances)
         mean_total_distances = mean(total_distances)
         mean_date_distances = mean(date_distances)
-        total_mean = sum(mean_addr_distances, mean_org_distances, mean_total_distances, mean_date_distances)
+        total_mean = mean_addr_distances + mean_org_distances + mean_total_distances + mean_date_distances
 
         mlflow.log_metric('eval_mean_addr_distances', mean_addr_distances)
         mlflow.log_metric('eval_mean_org_distances', mean_org_distances)

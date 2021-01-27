@@ -5,9 +5,8 @@ import pandas as pd
 
 
 class DataGenerator(keras.utils.Sequence):
-    def __init__(self, graph_src, label_src, labels, slugs, batch_size=32, node_count=512, node_shape=768,
-                 edge_count=40000, edge_shape=5, shuffle=True, one_hot=False,
-                 additional_data='/content/drive/MyDrive/ma-information-extraction-codebase/graph_networks/data/SROIE/results_df.json'):
+    def __init__(self, graph_src, label_src, labels, slugs,additional_data_src, batch_size=32, node_count=512, node_shape=768,
+                 edge_count=40000, edge_shape=5, shuffle=True, one_hot=False):
         # Initialization
         self.graph_src = graph_src
         self.label_src = label_src
@@ -18,12 +17,12 @@ class DataGenerator(keras.utils.Sequence):
         self.node_shape = node_shape
         self.edge_count = edge_count
         self.edge_shape = edge_shape
-        self.labels = np.asarray(labels)
+        self.labels = np.asarray(labels, dtype="object")
         self.failed_loads = []
         self.index_list = []
         self.on_epoch_end()
         self.one_hot = one_hot
-        self.additional_data_df = pd.read_json(additional_data)
+        self.additional_data_df = pd.read_json(additional_data_src)
         self.max_X_pos, self.max_Y_pos = self.get_max_positions()
 
     def __len__(self):
@@ -109,7 +108,7 @@ class DataGenerator(keras.utils.Sequence):
 
                 if self.one_hot:
                     y_i = np.asarray([keras.utils.to_categorical(y_i, num_classes=len(self.labels), dtype='float')
-                                      for i in range(self.batch_size)])
+                                      for i in range(self.batch_size)], dtype="object")
 
                 y[i][0:len(i_labels)] = y_i
 
@@ -122,9 +121,9 @@ class DataGenerator(keras.utils.Sequence):
 
 
 class DataGeneratorReducedLabels(keras.utils.Sequence):
-    def __init__(self, graph_src, label_src, labels, slugs, batch_size=32, node_count=512, node_shape=768,
-                 edge_count=40000, edge_shape=5, shuffle=True, one_hot=False,
-                 additional_data='/content/drive/MyDrive/ma-information-extraction-codebase/graph_networks/data/SROIE/results_df.json'):
+    def __init__(self, graph_src, label_src, labels, slugs,additional_data_src, batch_size=32, node_count=512, node_shape=768,
+                 edge_count=40000, edge_shape=5, shuffle=True, one_hot=False
+                 ):
         # Initialization
         self.graph_src = graph_src
         self.label_src = label_src
@@ -135,12 +134,12 @@ class DataGeneratorReducedLabels(keras.utils.Sequence):
         self.node_shape = node_shape
         self.edge_count = edge_count
         self.edge_shape = edge_shape
-        self.labels = np.asarray(labels)
+        self.labels = np.asarray(labels, dtype="object")
         self.failed_loads = []
         self.index_list = []
         self.on_epoch_end()
         self.one_hot = one_hot
-        self.additional_data_df = pd.read_json(additional_data)
+        self.additional_data_df = pd.read_json(additional_data_src)
         self.max_X_pos, self.max_Y_pos = self.get_Max_positions()
 
     def __len__(self):
@@ -206,7 +205,7 @@ class DataGeneratorReducedLabels(keras.utils.Sequence):
         for i, slug in enumerate(list_slugs_temp):
             try:
                 # laden Graph
-                graph = np.load(self.graph_src + slug + '.npy', allow_pickle=True)
+                graph = np.load(os.path.join(self.graph_src, slug + '.npy'), allow_pickle=True)
 
                 i  # i is batch index
                 x[0][i][0:len(graph[1])] = graph[1]  # creating batch of nodes
@@ -219,8 +218,8 @@ class DataGeneratorReducedLabels(keras.utils.Sequence):
                 x[3][i][len(graph[4]):] = -1  # setting receivers for added edges to -1
 
                 # load Labels
-                i_labels = np.load(self.label_src + slug + '.npy', allow_pickle=True)
-                y_i = np.asarray([np.argwhere(self.labels == label)[0][0] for label in i_labels])
+                i_labels = np.load(os.path.join(self.label_src, slug + '.npy'), allow_pickle=True)
+                y_i = np.asarray([np.argwhere(self.labels == label)[0][0] for label in i_labels], dtype="object")
                 y_i = np.where((y_i == 1) | (y_i == 2) | (y_i == 3), 1, y_i)
                 y_i = np.where((y_i == 4) | (y_i == 5) | (y_i == 6), 2, y_i)
                 y_i = np.where((y_i == 7) | (y_i == 8) | (y_i == 9), 3, y_i)
