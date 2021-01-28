@@ -109,12 +109,14 @@ class GraphExperiment(Experiment):
                                                                               str(self.n_train_steps),
                                                                               str(self.config.batch_size)))
 
+        self.inputs_for_embeddings, self.targets_for_embeddings = self.data_generator_validation.__getitem__(0)
+        self.tokens_for_embeddings, self.positions_for_embeddings = self.data_generator_validation.get_tokens_and_positions(
+            0)
+        super()._evaluate_embeddings(self.inputs_for_embeddings, self.targets_for_embeddings,
+                                     self.tokens_for_embeddings, self.positions_for_embeddings, epoch='init',
+                                     step=None)
+
         for epoch in tqdm(range(self.config.n_train_epochs)):
-            self.inputs_for_embeddings, self.targets_for_embeddings = self.data_generator_validation.__getitem__(0)
-            self.tokens_for_embeddings, self.positions_for_embeddings = self.data_generator_validation.get_tokens_and_positions(0)
-            super()._evaluate_embeddings(self.inputs_for_embeddings, self.targets_for_embeddings,
-                                         self.tokens_for_embeddings, self.positions_for_embeddings, epoch='init',
-                                         step=None)
             for train_step in tqdm(range(self.n_train_steps)):
                 inputs_train, targets_train = self.data_generator_train.__getitem__(train_step)
                 loss = self.model.train_on_single_batch(inputs_train, targets_train)
@@ -123,18 +125,17 @@ class GraphExperiment(Experiment):
                     super()._evaluate_embeddings(self.inputs_for_embeddings, self.targets_for_embeddings,
                                                  self.tokens_for_embeddings, self.positions_for_embeddings,
                                                  epoch, train_step)
-            for eval_step in tqdm(range(self.n_eval_steps)):
-                inputs_eval, targets_eval = self.data_generator_validation.__getitem__(eval_step)
-                tokens, positions = self.data_generator_validation.get_tokens_and_positions(eval_step)
-                self._evaluate_batch(inputs_eval, targets_eval, tokens, positions, epoch, eval_step)
+                    tokens, positions = self.data_generator_train.get_tokens_and_positions(train_step)
+                    super()._evaluate_batch(inputs_train, targets_train, tokens, positions, epoch, train_step)
 
-
+            self._evaluate(self.data_generator_validation, self.n_eval_steps, epoch)
+            self.data_generator_validation.on_epoch_end()
             self.data_generator_train.on_epoch_end()
 
         print("Training done.")
 
-    def _evaluate(self, data_generator: DataGenerator) -> None:
-        super()._evaluate(data_generator)
+    def _evaluate(self, data_generator: DataGenerator, n_eval_steps, epoch) -> None:
+        super()._evaluate(data_generator, n_eval_steps, epoch)
 
     def _predict(self, x) -> np.ndarray:
         prediction = self.model.predict(x)

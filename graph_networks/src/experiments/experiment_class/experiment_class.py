@@ -96,10 +96,10 @@ class Experiment(BaseExperiment):
     def _predict(self, x) -> np.ndarray:
         raise NotImplementedError
 
-    def _evaluate_batch(self, x, y_true_batch, tokens, positions,epoch_index=None, batch_index=None):
+    def _evaluate_batch(self, x, y_true_batch, tokens, positions, epoch, step):
         y_pred_batch, embeddings, masks = self._predict(x)
         predictions, truth = [], []
-        for pred, true, mask_length in zip(y_pred_batch, y_true_batch, masks) :
+        for pred, true, mask_length in zip(y_pred_batch, y_true_batch, masks):
             predictions.append(pred[:mask_length])
             if self.config.one_hot:
                 truth.append([np.argwhere(one_hot == 1)[0][0] for one_hot in true[:mask_length]])
@@ -108,17 +108,18 @@ class Experiment(BaseExperiment):
         y_true = np.concatenate(truth)
         y_pred = np.concatenate(predictions)
         positions = np.concatenate(positions)
-        self._compute_metrics(y_true, y_pred, batch_index)
+        self._compute_metrics(y_true, y_pred, str(epoch), str(step))
         self._compute_levenshtein(truth, predictions, tokens)
 
-    def _evaluate(self, data_generator: DataGenerator) -> None:
+    def _evaluate(self, data_generator: DataGenerator, n_eval_steps, epoch) -> None:
         print("Start evaluation")
         start = time.time()
         y_true, y_pred = [],[]
-        y_true_batched, y_pred_batched, tokens_batched = [],[],[]
-        for iteration in tqdm(range(0, self.config.n_eval_epochs)):
-            x, y = self.data_generator_validation.__getitem__(iteration)
-            tokens, positions = self.data_generator_validation.get_tokens_and_positions(iteration)
+        y_true_batched, y_pred_batched, tokens_batched = [], [], []
+        print(f"Evaluating Epoch {epoch}")
+        for iteration in tqdm(range(0, n_eval_steps)):
+            x, y = data_generator.__getitem__(iteration)
+            tokens, positions = data_generator.get_tokens_and_positions(iteration)
             predictions, embeddings, masks = self._predict(x)
             predictions_list, truth = [], []
             for pred, true, mask_length in zip(predictions, y, masks):
@@ -140,10 +141,10 @@ class Experiment(BaseExperiment):
         y_true = np.concatenate(y_true)
         y_pred = np.concatenate(y_pred)
         print("TIME: Finished evaluation of test set in " + str(round(end - start, 3)) + "s")
-        self._compute_metrics(y_true, y_pred)
+        self._compute_metrics(y_true, y_pred, str(epoch), None)
         self._compute_levenshtein(y_true_batched, y_pred_batched, tokens_batched)
 
-    def _compute_metrics(self, y_true, y_pred, batch_index=None):
+    def _compute_metrics(self, y_true, y_pred, epoch: str, step: str):
 
         precision, rec, f1, sup = precision_recall_fscore_support(np.asarray(y_true),
                                                                   np.asarray(y_pred),
@@ -154,11 +155,11 @@ class Experiment(BaseExperiment):
             labels = self.labels
         acc = accuracy_score(np.asarray(y_true), np.asarray(y_pred))
 
-        if batch_index is None:
-            mlflow.log_metric("final_accuracy", acc)
-            mlflow.log_metric("final_f1", f1)
-            mlflow.log_metric("final_recall", rec)
-            mlflow.log_metric("final_precision", precision)
+        if step is None:
+            mlflow.log_metric("train_accuracy", acc)
+            mlflow.log_metric("train_f1", f1)
+            mlflow.log_metric("train_recall", rec)
+            mlflow.log_metric("train_precision", precision)
         else:
             mlflow.log_metric("eval_accuracy", acc)
             mlflow.log_metric("eval_f1", f1)
@@ -167,7 +168,7 @@ class Experiment(BaseExperiment):
 
         y_pred = [self.labels[idx] for idx in y_pred]
         y_true = [self.labels[idx] for idx in y_true]
-        create_confusion_matrix(self.working_dir, labels, batch_index, np.asarray(y_true), np.asarray(y_pred))
+        create_confusion_matrix(self.working_dir, labels, epoch, step, np.asarray(y_true), np.asarray(y_pred))
         print("Latest f1: {}\nprecision: {}\nrecall: {}".format(f1, precision, rec))
 
 
@@ -176,7 +177,6 @@ class Experiment(BaseExperiment):
         predictions_batch, embeddings_batch, mask_lengths = self.model.predict(inputs_batch)
         if epoch == 'init':
             embeddings_batch = inputs_batch[0]
-        
 
         if self.config.num_classes == 5:
             labels = ['O', 'I-MONEY', 'I-ORG', 'I-DATE', 'I-GPE']
@@ -226,10 +226,10 @@ class Experiment(BaseExperiment):
         df = df.sort_values(['label'])
 
         print(f"Create embeddings plot: ...")
-        create_embeddings_plot(self.working_dir, epoch, df)
+        create_embeddings_plot(self.working_dir, str(epoch), str(step), df)
 
         print(f"Create distance plot: ...")
-        create_distance_plots(self.working_dir, df, embeddings, epoch)
+        create_distance_plots(self.working_dir, df, embeddings, str(epoch), str(step))
 
 
     def _compute_levenshtein(self, y_pred, y_true, tokens):
@@ -285,28 +285,28 @@ class Experiment(BaseExperiment):
         total_mean = mean_addr_distances + mean_org_distances + mean_total_distances + mean_date_distances
 
         if len(y_true) == self.config.batch_size:
+            mlflow.log_metric('train_mean_addr_distances', mean_addr_distances)
+            mlflow.log_metric('train_mean_org_distances', mean_org_distances)
+            mlflow.log_metric('train_mean_total_distances', mean_total_distances)
+            mlflow.log_metric('train_mean_date_distances', mean_date_distances)
+            mlflow.log_metric('train_total_mean', total_mean)
+            print("Latest levenshtein:")
+            print(f"train addr distances: {mean_addr_distances}")
+            print(f"train org distances: {mean_org_distances}")
+            print(f"train 'total' distances: {mean_total_distances}")
+            print(f"train date distances: {mean_date_distances}")
+            print(f"Average: {total_mean}")
+
+
+        if len(y_true) != self.config.batch_size:
             mlflow.log_metric('eval_mean_addr_distances', mean_addr_distances)
             mlflow.log_metric('eval_mean_org_distances', mean_org_distances)
             mlflow.log_metric('eval_mean_total_distances', mean_total_distances)
             mlflow.log_metric('eval_mean_date_distances', mean_date_distances)
             mlflow.log_metric('eval_total_mean', total_mean)
-            print("Latest levenshtein:")
+            print("Eval levenshtein:")
             print(f"mean addr distances: {mean_addr_distances}")
             print(f"mean org distances: {mean_org_distances}")
-            print(f"mean total distances: {mean_total_distances}")
+            print(f"mean 'total' distances: {mean_total_distances}")
             print(f"mean date distances: {mean_date_distances}")
-            print(f"total mean: {total_mean}")
-
-
-        if len(y_true) != self.config.batch_size:
-            mlflow.log_metric('final_mean_addr_distances', mean_addr_distances)
-            mlflow.log_metric('final_mean_org_distances', mean_org_distances)
-            mlflow.log_metric('final_mean_total_distances', mean_total_distances)
-            mlflow.log_metric('final_mean_date_distances', mean_date_distances)
-            mlflow.log_metric('final_total_mean', total_mean)
-            print("Final levenshtein:")
-            print(f"mean addr distances: {mean_addr_distances}")
-            print(f"mean org distances: {mean_org_distances}")
-            print(f"mean total distances: {mean_total_distances}")
-            print(f"mean date distances: {mean_date_distances}")
-            print(f"total mean: {total_mean}")
+            print(f"Average: {total_mean}")

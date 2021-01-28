@@ -1,4 +1,3 @@
-
 from sklearn.metrics.pairwise import cosine_similarity
 import itertools
 from typing import List, Tuple
@@ -25,7 +24,8 @@ def get_intra(matrix: np.ndarray, labels: pd.Series) -> Tuple[List[List[float]],
         result.append(subset)
         first_idx = final_idx
     return result, classes
-    
+
+
 def get_inter(matrix: np.ndarray, labels: pd.Series) -> Tuple[List[List[float]], List[str]]:
     """ Assumes that sample is already ordered by labels. """
     first_idx = 0
@@ -40,6 +40,7 @@ def get_inter(matrix: np.ndarray, labels: pd.Series) -> Tuple[List[List[float]],
         first_idx = final_idx
     return result, classes
 
+
 def compute_distance(ref_embeddings):
     '''
     Computes sum of distances between all classes embeddings on our reference test image:
@@ -51,15 +52,18 @@ def compute_distance(ref_embeddings):
     return cosine_similarity(ref_embeddings)
 
 
-
-def plot_distance_boxplot(matrix: np.ndarray, classes: List[str], n_iteration, type: str, figsize: Tuple=(16, 9)) -> Figure:
-    if type == "intra":
+def plot_distance_boxplot(matrix: np.ndarray, classes: pd.Series, epoch: str, step: str, distance_type: str,
+                          figsize: Tuple = (16, 9)) -> Figure:
+    if distance_type == "intra":
         data, class_ticks = get_intra(matrix, classes)
     else:
         data, class_ticks = get_inter(matrix, classes)
 
     fig, ax = plt.subplots(figsize=figsize)
-    ax.set_title(f'Evaluating {type} embeddings distance from each other afer iteration {n_iteration} ')
+    if step is None:
+        ax.set_title(f'Evaluating {distance_type} embeddings distance from each other at epoch {epoch}')
+    else:
+        ax.set_title(f'Evaluating {distance_type} embeddings distance from each other at epoch {epoch}, step {step} ')
     plt.xlabel('Classes')
     plt.ylabel('Distance')
     ax.boxplot(data, showfliers=False, showbox=True)
@@ -71,20 +75,21 @@ def plot_distance_boxplot(matrix: np.ndarray, classes: List[str], n_iteration, t
 
     return fig
 
+
 def label_point(x, y, val, ax):
     a = pd.concat({'x': x, 'y': y, 'val': val}, axis=1)
     for i, point in a.iterrows():
-        ax.text(point['x']+.02, 
+        ax.text(point['x'] + .02,
                 point['y'],
                 str(point['val']),
-                {'color':  'black',
-                  'weight': 'light',
-                  'size': 6,
-                  })
+                {'color': 'black',
+                 'weight': 'light',
+                 'size': 6,
+                 })
 
 
-
-def plot_density(name: str, train: pd.DataFrame, val: pd.DataFrame, test: pd.DataFrame, label: str, figsize: Tuple=(12,5)) -> Figure:
+def plot_density(name: str, train: pd.DataFrame, val: pd.DataFrame, test: pd.DataFrame, label: str,
+                 figsize: Tuple = (12, 5)) -> Figure:
     fig, ax = plt.subplots(figsize=figsize)
     plot_df = pd.concat([train[label], val[label], test[label]], axis=1)
     plot_df.columns = [f"train (#samples: {len(train)})",
@@ -100,45 +105,57 @@ def plot_density(name: str, train: pd.DataFrame, val: pd.DataFrame, test: pd.Dat
     return fig
 
 
-def plot_embeddings(iteration, df: pd.DataFrame, figsize=(30,17)) -> Figure:
+def plot_embeddings(epoch: str, step: str, df: pd.DataFrame, figsize=(30, 17)) -> Figure:
     fig, ax = plt.subplots(figsize=figsize)
     sns.scatterplot(
         x="tsne-2d-one", y="tsne-2d-two",
         hue="label",
-        style = "truth_matching",
+        style="truth_matching",
         data=df,
         legend="full",
-        ax = ax
+        ax=ax
     )
-    plt.title(f" 2D T-SNE embeddings - {str(iteration)}")
+    if step is None:
+        plt.title(f" 2D T-SNE embeddings - {epoch}")
+    else:
+        plt.title(f" 2D T-SNE embeddings - {epoch}_{step}")
     label_point(df["tsne-2d-one"], df["tsne-2d-two"], df['token'], plt.gca())
-    plt.show()
     plt.close()
 
     return fig
 
 
-def create_distance_plots(path: str, df: pd.DataFrame, embeddings: np.ndarray,iteration) -> None:
+def create_distance_plots(path: str, df: pd.DataFrame, embeddings: np.ndarray, epoch: str, step: str) -> None:
     distances = compute_distance(embeddings)
-    fig_intra =  plot_distance_boxplot(distances, df["label"], iteration, "intra", figsize=(16, 9))
-    fig_intra.savefig(path + f"intra_class_distances__{str(iteration)}")
+    fig_intra = plot_distance_boxplot(distances, df["label"], epoch, step, "intra", figsize=(16, 9))
+    if step is None:
+        fig_intra.savefig(path + f"intra_class_distances__{epoch}")
+    else:
+        fig_intra.savefig(path + f"intra_class_distances__{epoch}_{step}")
 
-    fig_inter = plot_distance_boxplot(distances, df["label"], iteration, "inter", figsize=(16, 9))
-    fig_inter.savefig(path + f"inter_class_distances__{str(iteration)}")
+    fig_inter = plot_distance_boxplot(distances, df["label"], epoch, step, "inter", figsize=(16, 9))
+    if step is None:
+        fig_inter.savefig(path + f"inter_class_distances__{epoch}")
+    else:
+        fig_inter.savefig(path + f"inter_class_distances__{epoch}_{step}")
 
 
-def create_embeddings_plot(path: str, iteration: int, df: pd.DataFrame) -> None:
-    fig = plot_embeddings(iteration, df)
-    fig.savefig(path + f"embeddings__{iteration}")
+def create_embeddings_plot(path: str, epoch: str, step: str, df: pd.DataFrame) -> None:
+    fig = plot_embeddings(epoch, step, df)
+    if step is None:
+        fig.savefig(path + f"embeddings__{epoch}")
+    else:
+        fig.savefig(path + f"embeddings__{epoch}_{step}")
 
 
 def plot_confusion_matrix(cm: np.ndarray,
                           target_names: List,
-                          iteration: int,
-                          title: str='Confusion matrix',
+                          epoch: str,
+                          step: str,
+                          title: str = 'Confusion matrix',
                           cmap=None,
                           normalize=False,
-                          figsize: Tuple = (12,9)) -> Figure:
+                          figsize: Tuple = (12, 9)) -> Figure:
     """
     given a sklearn confusion matrix (cm), make a nice plot
 
@@ -180,10 +197,10 @@ def plot_confusion_matrix(cm: np.ndarray,
 
     fig = plt.figure(figsize=figsize)
     plt.imshow(cm, interpolation='nearest', cmap=cmap)
-    if iteration is not None:
-        plt.title(title + f" (#: {np.sum(cm.astype(int))}) - eval iteration {str(iteration)}")
+    if step is None:
+        plt.title(title + f" (#: {np.sum(cm.astype(int))}) - eval of epoch {epoch}")
     else:
-        plt.title(title + f" (#: {np.sum(cm.astype(int))}) - eval")
+        plt.title(title + f" (#: {np.sum(cm.astype(int))}) - train epoch {epoch} step {step}")
     plt.colorbar()
 
     if target_names is not None:
@@ -214,10 +231,12 @@ def plot_confusion_matrix(cm: np.ndarray,
     return fig
 
 
-def create_confusion_matrix(path: str, classes: List[str], iteration: int, y_true: np.ndarray, y_pred: np.ndarray) -> None:
-    if iteration is None:
-        iteration = "final"
-    cm = confusion_matrix(y_true, y_pred, classes)
-    fig = plot_confusion_matrix(cm, classes, iteration)
-    fig.savefig(path + f"confusion_matrix_{str(iteration)}.png")
+def create_confusion_matrix(path: str, classes: List[str], epoch: str, step: str, y_true: np.ndarray,
+                            y_pred: np.ndarray) -> None:
 
+    cm = confusion_matrix(y_true, y_pred, classes)
+    fig = plot_confusion_matrix(cm, classes, epoch, step)
+    if step is None:
+        fig.savefig(path + f"confusion_matrix_epoch_{epoch}_evaluation.png")
+    else:
+        fig.savefig(path + f"confusion_matrix_{epoch}_{step}_train.png")

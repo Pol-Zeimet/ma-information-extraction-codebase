@@ -6,7 +6,7 @@ os.environ["CUDA_DEVICE_ORDER"]="PCI_BUS_ID"
 os.environ["CUDA_VISIBLE_DEVICES"]="0"
 
 n_iter_eval = 10
-n_iter_train = 50
+n_train_epochs = 5
 batch_size = 10
 
 labels = ['O', 'B-MONEY', 'I-MONEY', 'L-MONEY', 'B-ORG', 'I-ORG', 'L-ORG', 'B-DATE', 'I-DATE', 'L-DATE', 'B-GPE',
@@ -26,8 +26,7 @@ model_ids = ['Graph_Model_CRFv2_0_fold_5_classes',
              'Graph_Model_CRFv2_3_fold_5_classes']
 
 exp.extend(GraphExperiment(GraphNetConfig(batch_size=batch_size,
-                                          n_iter_eval=n_iter_eval,
-                                          n_iter_train=n_iter_train,
+                                          n_train_epochs=n_train_epochs,
                                           n_folds=int(model_id.split('_')[3]),
                                           penalty=penalty,
                                           model_id=model_id,
