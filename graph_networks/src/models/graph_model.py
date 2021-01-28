@@ -11,8 +11,8 @@ from tensorflow.keras import Model
 class GraphNetConfig(Config):
     def __init__(self,
                  penalty: float,
-                 n_iter_train: int,
-                 n_iter_eval: int,
+                 n_train_epochs: int,
+                 n_eval_epochs: int,
                  batch_size: int,
                  lr: float,
                  model_id: str,
@@ -31,13 +31,13 @@ class GraphNetConfig(Config):
                  logging: bool = False,
                  train_test_split: float = 0.25,
                  decay: float = 0.0):
-        super().__init__(
+        super(GraphNetConfig, self).__init__(
             logging=logging,
             num_classes=num_classes)
         self.model_id = model_id
         self.batch_size = batch_size
-        self.n_iter_train = n_iter_train
-        self.n_iter_eval = n_iter_eval
+        self.n_train_epochs = n_train_epochs
+        self.n_eval_epochs = n_eval_epochs
         self.learning_rate = lr
         self.adam_beta_1 = 0.9
         self.adam_beta_2 = 0.999

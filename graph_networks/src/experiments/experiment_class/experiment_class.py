@@ -96,7 +96,7 @@ class Experiment(BaseExperiment):
     def _predict(self, x) -> np.ndarray:
         raise NotImplementedError
 
-    def _evaluate_batch(self, x, y_true_batch, tokens, positions, batch_index=None):
+    def _evaluate_batch(self, x, y_true_batch, tokens, positions,epoch_index=None, batch_index=None):
         y_pred_batch, embeddings, masks = self._predict(x)
         predictions, truth = [], []
         for pred, true, mask_length in zip(y_pred_batch, y_true_batch, masks) :
@@ -116,7 +116,7 @@ class Experiment(BaseExperiment):
         start = time.time()
         y_true, y_pred = [],[]
         y_true_batched, y_pred_batched, tokens_batched = [],[],[]
-        for iteration in tqdm(range(0, self.config.n_iter_eval)):
+        for iteration in tqdm(range(0, self.config.n_eval_epochs)):
             x, y = self.data_generator_validation.__getitem__(iteration)
             tokens, positions = self.data_generator_validation.get_tokens_and_positions(iteration)
             predictions, embeddings, masks = self._predict(x)
@@ -171,14 +171,10 @@ class Experiment(BaseExperiment):
         print("Latest f1: {}\nprecision: {}\nrecall: {}".format(f1, precision, rec))
 
 
-    def _evaluate_embeddings(self, inputs_batch,
-                             true_labels_batch,
-                             tokens_batch,
-                             positions_batch,
-                             iteration):
+    def _evaluate_embeddings(self, inputs_batch, true_labels_batch, tokens_batch, positions_batch, epoch, step):
         
         predictions_batch, embeddings_batch, mask_lengths = self.model.predict(inputs_batch)
-        if iteration == 'init':
+        if epoch == 'init':
             embeddings_batch = inputs_batch[0]
         
 
@@ -230,10 +226,10 @@ class Experiment(BaseExperiment):
         df = df.sort_values(['label'])
 
         print(f"Create embeddings plot: ...")
-        create_embeddings_plot(self.working_dir, iteration, df)
+        create_embeddings_plot(self.working_dir, epoch, df)
 
         print(f"Create distance plot: ...")
-        create_distance_plots(self.working_dir, df, embeddings, iteration)
+        create_distance_plots(self.working_dir, df, embeddings, epoch)
 
 
     def _compute_levenshtein(self, y_pred, y_true, tokens):

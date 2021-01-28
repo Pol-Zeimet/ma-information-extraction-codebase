@@ -9,7 +9,6 @@ from tqdm import tqdm
 from sklearn.decomposition import PCA
 
 
-
 class GraphExperiment(Experiment):
 
     def __init__(self, config: GraphNetConfig, data_src: str, label_src: str, slug_src: str, additional_data_src: str, labels: list):
@@ -28,11 +27,15 @@ class GraphExperiment(Experiment):
         self.targets_for_embeddings = None
         self.tokens_for_embeddings = None
         self.positions_for_embeddings = None
+        self.n_train_steps = None
+        self.n_eval_steps = None
 
     def setup(self):
         self.all_slugs = np.load(self.slug_src)
-        validation_slugs = self.all_slugs[0:math.floor(len(self.all_slugs) * self.config.train_test_split)]
         train_slugs = self.all_slugs[math.floor(len(self.all_slugs) * self.config.train_test_split):]
+        validation_slugs = self.all_slugs[0:math.floor(len(self.all_slugs) * self.config.train_test_split)]
+        self.n_train_steps = len(train_slugs) // self.config.batch_size
+        self.n_eval_steps = len(validation_slugs) // self.config.batch_size
 
         if self.config.num_classes == 5:
             self.data_generator_train = DataGeneratorReducedLabels(graph_src=self.data_src,
@@ -102,29 +105,32 @@ class GraphExperiment(Experiment):
         self.data_generator_validation = None
 
     def _train(self) -> None:
-        print("Training with {} iterations, batch size={}".format(str(self.config.n_iter_train),
-                                                                  str(self.config.batch_size)))
-        
-        self.inputs_for_embeddings, self.targets_for_embeddings = self.data_generator_validation.__getitem__(0)
-        self.tokens_for_embeddings, positions_for_embeddings = self.data_generator_validation.get_tokens_and_positions(0)
-        super()._evaluate_embeddings(self.inputs_for_embeddings,
-                                             self.targets_for_embeddings,
-                                             self.tokens_for_embeddings,
-                                             self.positions_for_embeddings,
-                                             iteration = 'init')
+        print("Training for {} epochs with {} steps and batch size={}".format(str(self.config.n_train_epochs),
+                                                                              str(self.n_train_steps),
+                                                                              str(self.config.batch_size)))
 
-        for iteration in tqdm(range(self.config.n_iter_train)):
-            inputs, targets = self.data_generator_train.__getitem__(iteration)
-            loss = self.model.train_on_single_batch(inputs, targets)
-            mlflow.log_metric("loss", loss[0])
-            if iteration % 5 == 0:
-                super()._evaluate_embeddings(self.inputs_for_embeddings,
-                                             self.targets_for_embeddings,
-                                             self.tokens_for_embeddings,
-                                             self.positions_for_embeddings,
-                                             iteration)
-                tokens, positions = self.data_generator_train.get_tokens_and_positions(iteration)
-                super()._evaluate_batch(inputs, targets, tokens, positions, iteration)
+        for epoch in tqdm(range(self.config.n_train_epochs)):
+            self.inputs_for_embeddings, self.targets_for_embeddings = self.data_generator_validation.__getitem__(0)
+            self.tokens_for_embeddings, self.positions_for_embeddings = self.data_generator_validation.get_tokens_and_positions(0)
+            super()._evaluate_embeddings(self.inputs_for_embeddings, self.targets_for_embeddings,
+                                         self.tokens_for_embeddings, self.positions_for_embeddings, epoch='init',
+                                         step=None)
+            for train_step in tqdm(range(self.n_train_steps)):
+                inputs_train, targets_train = self.data_generator_train.__getitem__(train_step)
+                loss = self.model.train_on_single_batch(inputs_train, targets_train)
+                mlflow.log_metric("loss", loss[0])
+                if train_step % 5 == 0:
+                    super()._evaluate_embeddings(self.inputs_for_embeddings, self.targets_for_embeddings,
+                                                 self.tokens_for_embeddings, self.positions_for_embeddings,
+                                                 epoch, train_step)
+            for eval_step in tqdm(range(self.n_eval_steps)):
+                inputs_eval, targets_eval = self.data_generator_validation.__getitem__(eval_step)
+                tokens, positions = self.data_generator_validation.get_tokens_and_positions(eval_step)
+                self._evaluate_batch(inputs_eval, targets_eval, tokens, positions, epoch, eval_step)
+
+
+            self.data_generator_train.on_epoch_end()
+
         print("Training done.")
 
     def _evaluate(self, data_generator: DataGenerator) -> None:
@@ -139,4 +145,4 @@ class GraphExperiment(Experiment):
 
     def _final_log(self) -> None:
         super()._final_log()
-        
+
