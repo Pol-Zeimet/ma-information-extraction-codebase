@@ -39,9 +39,10 @@ class BertConfig(Config):
 
 
 class BertModel:
-    def __init__(self, config: BertConfig, training_args, data_args, model_args):
+    def __init__(self, config: BertConfig, training_args, data_args, model_args, working_dir: str = None):
         self.config = config
         self.logging = config.logging
+        self.working_dir = working_dir
 
         self.label_list = config.label_list
         self.model_id = config.model_id
@@ -89,44 +90,63 @@ class BertModel:
 
     def evaluate(self):
         self.trainer_state = 'evaluate'
-        results = self.predict(data['validation']['token'])
-        return self.trainer.evaluate(), self._compute_levenshtein(results, data['validation']['ner_tags'], data['validation']['token'])
+        results, metrics = self.predict(data['validation'])
+        return self.trainer.evaluate(), self._compute_levenshtein(results, data['validation']['ner_tags'],
+                                                                  data['validation']['tokens'])
 
-    def predict(self, token_sequences):
+    def predict(self, dataset):
         padding = "max_length" if self.data_args.pad_to_max_length else False
-        inputs = self.tokenizer.encode(token_sequence,
-                          padding=padding,
-                          truncation=True,
-                          is_split_into_words=True,
-                          return_tensors="pt")
-
-        outputs = model(inputs)[0]
-        predictions = torch.argmax(outputs, dim=2)
-        results = [(token, self.label_list[prediction]) for token, prediction in zip(tokens, predictions[0].tolist())]
-        return results
+        predictions, labels, metrics = self.trainer.predict(dataset)
+        predictions = np.argmax(predictions, axis=2)
+        cleaned_predictions = [
+            [self.label_list[p] for (p, l) in zip(prediction, label) if l != -100]
+            for prediction, label in zip(predictions, labels)
+        ]
+        results = []
+        for sequence, prediction in zip(dataset['tokens'], cleaned_predictions):
+            tokens = self.tokenizer.tokenize(self.tokenizer.decode(self.tokenizer.encode(sequence,
+                                                                                         padding=padding,
+                                                                                         truncation=True,
+                                                                                         is_split_into_words=True)))
+            results.append(
+                [(token, prediction) for token, prediction in zip(tokens, prediction)])
+        return results, metrics
 
     def save_weights(self, path: str) -> None:
         self.trainer.save_model(path)
         print("Model saved in " + path)
 
+    def set_working_dir(self, path):
+        self.working_dir = path
+
     def _compute_metrics(self, p):
         predictions, labels = p
         predictions = np.argmax(predictions, axis=2)
         # Remove ignored index (special tokens)
-        true_predictions = [
+        predictions_cleaned = [
             [self.label_list[p] for (p, l) in zip(prediction, label) if l != -100]
             for prediction, label in zip(predictions, labels)
         ]
-        true_labels = [
+        labels_cleaned = [
             [self.label_list[l] for (p, l) in zip(prediction, label) if l != -100]
             for prediction, label in zip(predictions, labels)
         ]
-
-        #todo confusion matrix for baseline pls
-        acc = accuracy_score(true_labels, true_predictions)
-        precision = precision_score(true_labels, true_predictions)
-        recall = recall_score(true_labels, true_predictions)
-        f1 = f1_score(true_labels, true_predictions)
+        if (self.trainer.state.epoch is not None) & (self.trainer.state.global_step is not None):
+            epoch = self.trainer.state.epoch
+            step = self.trainer.state.global_step
+        else:
+            epoch = 'final'
+            step = None
+        create_confusion_matrix(self.working_dir,
+                                self.label_list,
+                                epoch=epoch,
+                                step=step,
+                                y_pred=np.asarray([item for sublist in predictions_cleaned for item in sublist]),
+                                y_true=np.asarray([item for sublist in labels_cleaned for item in sublist]))
+        acc = accuracy_score(labels_cleaned, predictions_cleaned)
+        precision = precision_score(labels_cleaned, predictions_cleaned)
+        recall = recall_score(labels_cleaned, predictions_cleaned)
+        f1 = f1_score(labels_cleaned, predictions_cleaned)
 
         mlflow.log_metric(self.trainer_state + "_accuracy", acc)
         mlflow.log_metric(self.trainer_state + "_f1", f1)

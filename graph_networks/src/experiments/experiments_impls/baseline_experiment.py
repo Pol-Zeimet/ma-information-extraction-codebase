@@ -119,17 +119,17 @@ class BertExperiment(Experiment):
             self._evaluate()
             print("Done evaluation on evaluation set")
         if self.training_args.do_predict:
-            self._predict(self.datasets)
+            self._predict()
             print('Done predicting test set')
 
     def _train(self) -> None:
         self.model.train(self.datasets)
 
-    def _predict(self, dataset):
+    def _predict(self):
         if self.config.logging:
             self.logger.info("*** Predict ***")
         start = time.time()
-        predictions, labels, metrics = self.model.predict(dataset)
+        results, metrics = self.model.predict(self.datasets['test'])
         end = time.time()
         print("TIME: Finished prediction of test set in " + str(round(end - start, 3)) + "s")
         if self.config.logging:
@@ -140,7 +140,7 @@ class BertExperiment(Experiment):
 
     def _evaluate(self):
         start = time.time()
-        results, distances = self.model.evaluate()
+        results, distances = self.model.evaluate(self.datasets)
         end = time.time()
         print("TIME: Finished evaluation set in " + str(round(end - start, 3)) + "s")
         if self.config.logging:
