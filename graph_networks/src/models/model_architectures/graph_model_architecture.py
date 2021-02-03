@@ -209,8 +209,8 @@ class GraphModelCRFv2:
         # input
         nodes_input = keras.Input(shape=(node_count, node_vector_length), name='nodes_input')
         edges_input = keras.Input(shape=(edge_count, edge_vector_length), name='edges_input')
-        senders_input = keras.Input(shape=(edge_count), dtype='int32', name='senders_input')
-        receivers_input = keras.Input(shape=(edge_count), dtype='int32', name='receivers_input')
+        senders_input = keras.Input(shape=edge_count, dtype='int32', name='senders_input')
+        receivers_input = keras.Input(shape=edge_count, dtype='int32', name='receivers_input')
 
         # conv_layer
         graph_conv_layer = GraphConvV2(input_units,

@@ -92,7 +92,7 @@ class DataGenerator(keras.utils.Sequence):
                 # laden Graph
                 graph = np.load(os.path.join(self.graph_src, slug + '.npy'), allow_pickle=True)
 
-                i  # i is batch index
+                # i is batch index
                 x[0][i][0:len(graph[1])] = graph[1]  # creating batch of nodes
                 x[1][i][0:len(graph[2])] = graph[2]  # creating batch of edges
 
@@ -207,7 +207,7 @@ class DataGeneratorReducedLabels(keras.utils.Sequence):
                 # laden Graph
                 graph = np.load(os.path.join(self.graph_src, slug + '.npy'), allow_pickle=True)
 
-                i  # i is batch index
+                # i is batch index
                 x[0][i][0:len(graph[1])] = graph[1]  # creating batch of nodes
                 x[1][i][0:len(graph[2])] = graph[2]  # creating batch of edges
 

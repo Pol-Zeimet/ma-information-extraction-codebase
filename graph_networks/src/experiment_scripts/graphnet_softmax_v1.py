@@ -6,7 +6,6 @@ from src import ExperimentPipeline
 os.environ["CUDA_DEVICE_ORDER"]="PCI_BUS_ID"
 os.environ["CUDA_VISIBLE_DEVICES"]="0"
 
-n_iter_eval = 10
 n_train_epochs = 5
 batch_size = 10
 

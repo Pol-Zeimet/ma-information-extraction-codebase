@@ -12,7 +12,6 @@ class GraphNetConfig(Config):
     def __init__(self,
                  penalty: float,
                  n_train_epochs: int,
-                 n_eval_epochs: int,
                  batch_size: int,
                  lr: float,
                  model_id: str,
@@ -37,7 +36,6 @@ class GraphNetConfig(Config):
         self.model_id = model_id
         self.batch_size = batch_size
         self.n_train_epochs = n_train_epochs
-        self.n_eval_epochs = n_eval_epochs
         self.learning_rate = lr
         self.adam_beta_1 = 0.9
         self.adam_beta_2 = 0.999
@@ -142,7 +140,7 @@ class GraphModel:
         if self.model_type == 'Softmax':
             predictions = output[0]
             graph_embeddings = output[1]
-            masks  = [np.argwhere(mask == False)[0][0] for mask in output[2]]
+            masks = [np.argwhere(mask == False)[0][0] for mask in output[2]]
             predictions = tf_one_hot(tf_argmax(predictions, axis=2), depth=self.config.num_classes)
             predictions = [np.where(labels == 1)[0][0] for prediction in predictions for labels in prediction]
             predictions = np.reshape(predictions, (self.config.batch_size, self.config.node_count))

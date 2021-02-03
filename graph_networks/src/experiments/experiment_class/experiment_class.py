@@ -109,7 +109,7 @@ class Experiment(BaseExperiment):
         y_pred = np.concatenate(predictions)
         positions = np.concatenate(positions)
         self._compute_metrics(y_true, y_pred, str(epoch), str(step))
-        self._compute_levenshtein(truth, predictions, tokens)
+        compute_levenshtein(predictions, truth, tokens, True)
 
     def _evaluate(self, data_generator: DataGenerator, n_eval_steps, epoch) -> None:
         print("Start evaluation")
@@ -142,7 +142,7 @@ class Experiment(BaseExperiment):
         y_pred = np.concatenate(y_pred)
         print("TIME: Finished evaluation of test set in " + str(round(end - start, 3)) + "s")
         self._compute_metrics(y_true, y_pred, str(epoch), None)
-        self._compute_levenshtein(y_true_batched, y_pred_batched, tokens_batched)
+        compute_levenshtein(y_pred_batched, y_true_batched, tokens_batched, False)
 
     def _compute_metrics(self, y_true, y_pred, epoch: str, step: str):
 
