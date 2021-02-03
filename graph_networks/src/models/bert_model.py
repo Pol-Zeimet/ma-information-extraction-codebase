@@ -2,15 +2,17 @@ import os
 from typing import Dict, Any
 from src.experiments.config import Config
 from src.models.model_architectures.bert_architecture import Bert
+from src.util.metrics.baseline_metrics import accuracy_score, recall_score, precision_score, f1_score
+from src.util.metrics.levenshtein import postprocess_tokens
+from src.util.plot import create_confusion_matrix
 import numpy as np
 from transformers import Trainer, \
     DataCollatorForTokenClassification, \
     AutoModelForTokenClassification, \
     PreTrainedTokenizerBase
-
 from transformers.integrations import MLflowCallback
-from src.util.metrics.baseline_metrics import accuracy_score, recall_score, precision_score, f1_score
 import mlflow
+from statistics import mean
 from Levenshtein import distance as levenshtein_distance
 
 
@@ -88,7 +90,7 @@ class BertModel:
                            if os.path.isdir(self.model_args.model_name_or_path)
                            else None)
 
-    def evaluate(self):
+    def evaluate(self, data):
         self.trainer_state = 'evaluate'
         results, metrics = self.predict(data['validation'])
         return self.trainer.evaluate(), self._compute_levenshtein(results, data['validation']['ner_tags'],
@@ -200,59 +202,85 @@ class BertModel:
         return tokenized_inputs
 
     def _compute_levenshtein(self, y_pred, y_true, tokens):
-        for pred, true, token in zip(y_pred, y_true, tokens):   
+        addr_distances = []
+        org_distances = []
+        total_distances = []
+        date_distances = []
+        addr_coverages = []
+        org_coverages = []
+        total_coverages = []
+        date_coverages = []
 
-            org, total, addr, date = [],[],[],[]
+        for pred, true, token in zip(y_pred, y_true, tokens):
+            org, total, addr, date = [], [], [], []
             for result in pred:
                 if result[-1] != 'O':
                     tag = result[-1].split('-')[-1]
-                if tag == 'ORG':
-                    org.append(result[0])
-                elif tag == 'GPE':
-                    addr.append(result[0])
-                elif tag == 'DATE':
-                    date.append(result[0])
-                elif tag == 'MONEY':
-                    total.append(result[0])
+                    if tag == 'ORG':
+                        org.append(result[0])
+                    elif tag == 'GPE':
+                        addr.append(result[0])
+                    elif tag == 'DATE':
+                        date.append(result[0])
+                    elif tag == 'MONEY':
+                        total.append(result[0])
 
-            true_org, true_total, true_addr, true_date = [],[],[],[]
+            true_org, true_total, true_addr, true_date = [], [], [], []
 
             for pair in zip(token, true):
-              text, label = pair[0], pair[1]
-              if label != 'O':
-                  tag = label.split('-')[-1]
-              if tag == 'ORG':
-                  true_org.append(text)   
-              elif tag == 'GPE':
-                  true_addr.append(text)
-              elif tag == 'DATE':
-                  true_date.append(text)
-              elif tag == 'MONEY':
-                  true_total.append(text)
+                text, label = pair[0], pair[1]
+                if label != 'O':
+                    tag = label.split('-')[-1]
+                    if tag == 'ORG':
+                        true_org.append(text)
+                    elif tag == 'GPE':
+                        true_addr.append(text)
+                    elif tag == 'DATE':
+                        true_date.append(text)
+                    elif tag == 'MONEY':
+                        true_total.append(text)
 
 
-            true_addr_text = ' '.join(true_addr).strip()
-            true_org_text = ' '.join(true_org).strip()
-            true_total_text = ' '.join(true_total).strip()
-            true_date_text = ' '.join(true_date).strip()
+            true_addr_text = postprocess_tokens(true_addr, 'addr')
+            true_org_text = postprocess_tokens(true_org, 'org')
+            true_total_text = postprocess_tokens(true_total, 'total')
+            true_date_text = postprocess_tokens(true_date, 'date')
 
-            addr_text = ' '.join(addr).replace(' ##', '').replace(' - ', '-').replace('( ', '(').replace(' )', ')').replace(' ,',',').replace(' .', '.').strip()
-            org_text = ' '.join(org).replace(' ##', '').replace(' - ', '-').replace('( ', '(').replace(' )', ')').replace(' ,',',').replace(' .', '.').strip()
-            total_text = ' '.join(total).replace(' ##', '').replace(' . ', '.').strip()
-            date_text = ' '.join(date).replace(' ##', '').replace(' - ', '-').replace(' : ', ':').strip()
+            addr_text = postprocess_tokens(addr, 'addr')
+            org_text = postprocess_tokens(org, 'org')
+            total_text = postprocess_tokens(total, 'total')
+            date_text = postprocess_tokens(date, 'date')
+
+            if len(true_org_text) > 0:
+                org_text_distance = levenshtein_distance(org_text, true_org_text)
+                org_distances.append(org_text_distance)
+                org_coverages.append((len(true_org_text) - org_text_distance) / len(true_org_text) * 100)
+            if len(true_addr_text) > 0:
+                addr_text_distance = levenshtein_distance(addr_text, true_addr_text)
+                addr_distances.append(addr_text_distance)
+                addr_coverages.append((len(true_addr_text) - addr_text_distance) / len(true_addr_text) * 100)
+            if len(true_date_text) > 0:
+                date_text_distance = levenshtein_distance(date_text, true_date_text)
+                date_distances.append(date_text_distance)
+                date_coverages.append((len(true_date_text) - date_text_distance) / len(true_date_text) * 100)
+            if len(true_total_text) > 0:
+                total_text_distance = levenshtein_distance(total_text, true_total_text)
+                total_distances.append(total_text_distance)
+                total_coverages.append((len(true_total_text) - total_text_distance) / len(true_total_text) * 100)
 
 
-            addr_distances.append(levenshtein_distance(str.lower(org_text),str.lower(true_org_text)))
-            org_distances.append(levenshtein_distance(str.lower(addr_text),str.lower(true_addr_text)))
-            total_distances.append(levenshtein_distance(str.lower(date_text),str.lower(true_date_text)))
-            date_distances.append(levenshtein_distance(str.lower(total_text),str.lower(true_total_text)))
-            
 
         mean_addr_distances = mean(addr_distances)
         mean_org_distances = mean(org_distances)
         mean_total_distances = mean(total_distances)
         mean_date_distances = mean(date_distances)
-        total_mean = mean_addr_distances + mean_org_distances + mean_total_distances + mean_date_distances
+        total_mean = (mean_addr_distances + mean_org_distances + mean_total_distances + mean_date_distances) / 4
+
+        mean_addr_coverages = mean(org_coverages)
+        mean_org_coverages = mean(org_coverages)
+        mean_total_coverages = mean(total_coverages)
+        mean_date_coverages = mean(date_coverages)
+        mean_coverage = (mean_addr_coverages + mean_org_coverages + mean_total_coverages + mean_date_coverages) / 4
 
         mlflow.log_metric('eval_mean_addr_distances', mean_addr_distances)
         mlflow.log_metric('eval_mean_org_distances', mean_org_distances)
@@ -260,10 +288,21 @@ class BertModel:
         mlflow.log_metric('eval_mean_date_distances', mean_date_distances)
         mlflow.log_metric('eval_total_mean', total_mean)
 
+        mlflow.log_metric(f'eval_mean_addr_coverage', mean_addr_coverages)
+        mlflow.log_metric(f'eval_mean_org_coverage', mean_org_coverages)
+        mlflow.log_metric(f'eval_mean_total_coverage', mean_total_coverages)
+        mlflow.log_metric(f'eval_mean_date_coverage', mean_date_coverages)
+        mlflow.log_metric(f'eval_mean_coverage', mean_coverage)
+
         return {
             'eval_mean_addr_distances': mean_addr_distances,
             'eval_mean_org_distances': mean_org_distances,
             'eval_mean_total_distances': mean_total_distances,
             'eval_mean_date_distances': mean_date_distances,
-            'eval_total_mean': total_mean
+            'eval_total_mean': total_mean,
+            'eval_mean_addr_coverage': mean_addr_coverages,
+            'eval_mean_org_coverage': mean_org_coverages,
+            'eval_mean_total_coverage': mean_total_coverages,
+            'eval_mean_date_coverage': mean_date_coverages,
+            'eval_mean_coverage': mean_coverage
         }

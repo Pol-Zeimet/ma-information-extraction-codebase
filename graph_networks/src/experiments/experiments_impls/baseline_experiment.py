@@ -8,6 +8,7 @@ from transformers.trainer_utils import is_main_process
 import logging
 from datasets import ClassLabel, load_dataset
 from src.models.bert_model import BertModel, BertConfig
+import mlflow
 
 
 class BertExperiment(Experiment):
@@ -104,7 +105,7 @@ class BertExperiment(Experiment):
             # No need to convert the labels since they are already ints.
             label_to_id = {i: i for i in range(len(label_list))}
         else:
-            label_list = self._get_label_list( datasets["train"][label_column_name])
+            label_list = self._get_label_list(datasets["train"][label_column_name])
             label_to_id = {l: i for i, l in enumerate(label_list)}
         num_labels = len(label_list)
 
@@ -112,6 +113,7 @@ class BertExperiment(Experiment):
 
     def _run(self) -> None:
         super()._run()
+        self.model.set_working_dir(self.working_dir)
         if self.training_args.do_train:
             self._train()
             print("Done with train")
@@ -163,6 +165,7 @@ class BertExperiment(Experiment):
         super()._run_holdout()
 
     def _final_log(self) -> None:
+        mlflow.log_param("Training/evaluation parameters", self.training_args)
         mlflow.log_artifacts(self.working_dir)
 
     def _setup_logging(self):
@@ -184,7 +187,6 @@ class BertExperiment(Experiment):
             transformer_logging.enable_explicit_format()
 
         self.logger.info("Training/evaluation parameters %s", self.training_args)
-        mlflow.log_param("Training/evaluation parameters", self.training_args)
 
     def cleanup(self):
         super().cleanup()
