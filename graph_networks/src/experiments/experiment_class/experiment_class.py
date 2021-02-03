@@ -205,6 +205,7 @@ class Experiment(BaseExperiment):
 
             truth_list.append(tr)
             label_list.append(l)
+            predictions_list.append(o)
 
         embeddings = np.concatenate(embeddings_list)
         labels = np.concatenate(label_list)
