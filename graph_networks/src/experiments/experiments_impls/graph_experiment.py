@@ -1,4 +1,3 @@
-from typing import Dict
 import mlflow
 import numpy as np
 import math
@@ -6,7 +5,6 @@ from src.data.data_generators import DataGenerator, DataGeneratorReducedLabels
 from src.experiments.experiment_class.experiment_class import Experiment
 from src.models.graph_model import GraphNetConfig, GraphModel
 from tqdm import tqdm
-from sklearn.decomposition import PCA
 
 
 class GraphExperiment(Experiment):
@@ -96,7 +94,7 @@ class GraphExperiment(Experiment):
         super()._run()
         self._train()
         print("Done with train")
-        self._evaluate(self.data_generator_validation)
+        self._evaluate(self.data_generator_validation, self.n_eval_steps, 'final')
         print("Done evaluation on test set")
 
     def cleanup(self):
@@ -121,10 +119,10 @@ class GraphExperiment(Experiment):
                 inputs_train, targets_train = self.data_generator_train.__getitem__(train_step)
                 loss = self.model.train_on_single_batch(inputs_train, targets_train)
                 mlflow.log_metric("loss", loss[0])
+                super()._evaluate_embeddings(self.inputs_for_embeddings, self.targets_for_embeddings,
+                                             self.tokens_for_embeddings, self.positions_for_embeddings,
+                                             epoch, train_step)
                 if train_step % 5 == 0:
-                    super()._evaluate_embeddings(self.inputs_for_embeddings, self.targets_for_embeddings,
-                                                 self.tokens_for_embeddings, self.positions_for_embeddings,
-                                                 epoch, train_step)
                     tokens, positions = self.data_generator_train.get_tokens_and_positions(train_step)
                     super()._evaluate_batch(inputs_train, targets_train, tokens, positions, epoch, train_step)
 

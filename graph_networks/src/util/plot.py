@@ -108,7 +108,7 @@ def plot_density(name: str, train: pd.DataFrame, val: pd.DataFrame, test: pd.Dat
 def plot_embeddings(epoch: str, step: str, df: pd.DataFrame, figsize=(30, 17)) -> Figure:
     fig, ax = plt.subplots(figsize=figsize)
     sns.scatterplot(
-        x="tsne-2d-one", y="tsne-2d-two",
+        x="umap-one", y="umap-two",
         hue="label",
         style="truth_matching",
         data=df,
@@ -116,10 +116,10 @@ def plot_embeddings(epoch: str, step: str, df: pd.DataFrame, figsize=(30, 17)) -
         ax=ax
     )
     if step is None:
-        plt.title(f" 2D T-SNE embeddings - {epoch}")
+        plt.title(f" 2D umap embeddings - {epoch}")
     else:
-        plt.title(f" 2D T-SNE embeddings - {epoch}_{step}")
-    label_point(df["tsne-2d-one"], df["tsne-2d-two"], df['token'], plt.gca())
+        plt.title(f" 2D umap embeddings - {epoch}_{step}")
+    label_point(df["umap-one"], df["umap-two"], df['token'], plt.gca())
     plt.close()
 
     return fig

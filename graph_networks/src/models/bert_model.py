@@ -14,6 +14,7 @@ from transformers.integrations import MLflowCallback
 import mlflow
 from statistics import mean
 from Levenshtein import distance as levenshtein_distance
+import torch
 
 
 class BertConfig(Config):

@@ -8,13 +8,12 @@ from src.experiment_scripts.config import MLFLOW_TRACKING_URI, MLFLOW_EXPERIMENT
 from src.data.data_generators import DataGenerator
 from src.experiments.config import Config
 from src.util.plot import create_confusion_matrix, create_distance_plots, create_embeddings_plot
-from sklearn.decomposition import PCA
-from sklearn.manifold import TSNE
+from src.util.metrics.levenshtein import compute_levenshtein
 import numpy as np
 import pandas as pd
-from tensorflow.python.ops import math_ops
-from Levenshtein import distance as levenshtein_distance
-from statistics import mean
+import umap
+import os, sys
+
 
 class BaseExperiment:
     def __init__(self, name: str, config: Config):
@@ -166,14 +165,14 @@ class Experiment(BaseExperiment):
             mlflow.log_metric("eval_recall", rec)
             mlflow.log_metric("eval_precision", precision)
 
-        y_pred = [self.labels[idx] for idx in y_pred]
-        y_true = [self.labels[idx] for idx in y_true]
+        y_pred = [labels[idx] for idx in y_pred]
+        y_true = [labels[idx] for idx in y_true]
         create_confusion_matrix(self.working_dir, labels, epoch, step, np.asarray(y_true), np.asarray(y_pred))
         print("Latest f1: {}\nprecision: {}\nrecall: {}".format(f1, precision, rec))
 
 
     def _evaluate_embeddings(self, inputs_batch, true_labels_batch, tokens_batch, positions_batch, epoch, step):
-        
+
         predictions_batch, embeddings_batch, mask_lengths = self.model.predict(inputs_batch)
         if epoch == 'init':
             embeddings_batch = inputs_batch[0]
@@ -191,13 +190,19 @@ class Experiment(BaseExperiment):
         embeddings_list = []
         label_list = []
         truth_list = []
-        for e, l, m in zip(embeddings_batch, true_labels_batch, mask_lengths):
-            
+        predictions_list = []
+        for e, l, m, o in zip(embeddings_batch, true_labels_batch, mask_lengths, predictions_batch):
+
             embeddings_list.append(e[:m])
             l = l[:m]
+            o = o[:m]
             if self.config.one_hot:
                 tr = [np.argwhere(one_hot == 1)[0][0] for one_hot in l]
                 l = [labels[idx] for idx in tr]
+            else:
+                tr = l
+                l = [labels[idx] for idx in tr]
+
             truth_list.append(tr)
             label_list.append(l)
 
@@ -205,108 +210,51 @@ class Experiment(BaseExperiment):
         labels = np.concatenate(label_list)
         truth = np.concatenate(truth_list)
         tokens = np.concatenate(tokens_batch)
-        predictions = [labels[idx] for idx in np.concatenate(predictions_batch)]
+        predictions = np.concatenate(predictions_list)
         truth_matching = np.where(truth == predictions, 'correct predictions', 'incorrect predictions')
-        # positions = np.concatenate(positions_batch)
+        positions = np.concatenate(positions_batch)
 
-        print("Run PCA 70 ...")
-        pca_70 = PCA(n_components=70)
-        pca_result_70 = pca_70.fit_transform(embeddings)
+        original_stdout = sys.stdout
+        sys.stdout = open(os.devnull, 'w')
+        if epoch == 'init':
+            self.reducer = umap.UMAP()
+            self.reducer.fit(embeddings)
 
-        print("Run T-SNE...")
-        transformed = TSNE(n_components=2, verbose=1, perplexity=50).fit_transform(pca_result_70)
+        transformed = self.reducer.transform(embeddings)
+
 
         df = pd.DataFrame()
-        df['tsne-2d-one'] = transformed[:, 0]
-        df['tsne-2d-two'] = transformed[:, 1]
+        df['umap-one'] = transformed[:, 0]
+        df['umap-two'] = transformed[:, 1]
         df['label'] = labels
         df['token'] = tokens
         df['truth_matching'] = truth_matching
-
-        df = df.sort_values(['label'])
-
-        print(f"Create embeddings plot: ...")
-        create_embeddings_plot(self.working_dir, str(epoch), str(step), df)
-
-        print(f"Create distance plot: ...")
-        create_distance_plots(self.working_dir, df, embeddings, str(epoch), str(step))
+        for i in range(positions.shape[1]):
+            df[f"position_{i}"] = positions[:, i]
+        if step is None:
+            df.to_pickle(os.path.join(self.working_dir, f"umap_embeddings_{epoch}"))
+        else:
+            df.to_pickle(os.path.join(self.working_dir, f"umap_embeddings_{epoch}_{step}"))
 
 
-    def _compute_levenshtein(self, y_pred, y_true, tokens):
-        
-        addr_distances = []
-        org_distances = []
-        total_distances = []
-        date_distances = []
-
-        for pred, true, token in zip(y_pred, y_true, tokens):   
-            true_addr,true_org, true_total, true_date = [],[],[],[]
-            addr,org,total,date = [],[],[],[]
-            for idx, (pred_label, true_label) in enumerate(zip(pred,true)):
-                if pred_label == 1:
-                    total.append(token[idx])
-                elif pred_label == 2:
-                    org.append(token[idx])
-                elif pred_label == 3:
-                    date.append(token[idx])
-                elif pred_label == 4:
-                    addr.append(token[idx])
-                
-                if true_label == 1:
-                    true_total.append(token[idx])
-                elif true_label == 2:
-                    true_org.append(token[idx])
-                elif true_label == 3:
-                    true_date.append(token[idx])
-                elif true_label == 4:
-                    true_addr.append(token[idx])
-
-            true_addr_text = ' '.join(true_addr).strip()
-            true_org_text = ' '.join(true_org).strip()
-            true_total_text = ' '.join(true_total).strip()
-            true_date_text = ' '.join(true_date).strip()
-
-            addr_text = ' '.join(addr).replace(' ##', '').replace(' - ', '-').replace('( ', '(').replace(' )', ')').replace(' ,',',').replace(' .', '.').strip()
-            org_text = ' '.join(org).replace(' ##', '').replace(' - ', '-').replace('( ', '(').replace(' )', ')').replace(' ,',',').replace(' .', '.').strip()
-            total_text = ' '.join(total).replace(' ##', '').replace(' . ', '.').strip()
-            date_text = ' '.join(date).replace(' ##', '').replace(' - ', '-').replace(' : ', ':').strip()
-
-
-            addr_distances.append(levenshtein_distance(str.lower(org_text),str.lower(true_org_text)))
-            org_distances.append(levenshtein_distance(str.lower(addr_text),str.lower(true_addr_text)))
-            total_distances.append(levenshtein_distance(str.lower(date_text),str.lower(true_date_text)))
-            date_distances.append(levenshtein_distance(str.lower(total_text),str.lower(true_total_text)))
-        
-
-        mean_addr_distances = mean(addr_distances)
-        mean_org_distances = mean(org_distances)
-        mean_total_distances = mean(total_distances)
-        mean_date_distances = mean(date_distances)
-        total_mean = mean_addr_distances + mean_org_distances + mean_total_distances + mean_date_distances
-
-        if len(y_true) == self.config.batch_size:
-            mlflow.log_metric('train_mean_addr_distances', mean_addr_distances)
-            mlflow.log_metric('train_mean_org_distances', mean_org_distances)
-            mlflow.log_metric('train_mean_total_distances', mean_total_distances)
-            mlflow.log_metric('train_mean_date_distances', mean_date_distances)
-            mlflow.log_metric('train_total_mean', total_mean)
-            print("Latest levenshtein:")
-            print(f"train addr distances: {mean_addr_distances}")
-            print(f"train org distances: {mean_org_distances}")
-            print(f"train 'total' distances: {mean_total_distances}")
-            print(f"train date distances: {mean_date_distances}")
-            print(f"Average: {total_mean}")
-
-
-        if len(y_true) != self.config.batch_size:
-            mlflow.log_metric('eval_mean_addr_distances', mean_addr_distances)
-            mlflow.log_metric('eval_mean_org_distances', mean_org_distances)
-            mlflow.log_metric('eval_mean_total_distances', mean_total_distances)
-            mlflow.log_metric('eval_mean_date_distances', mean_date_distances)
-            mlflow.log_metric('eval_total_mean', total_mean)
-            print("Eval levenshtein:")
-            print(f"mean addr distances: {mean_addr_distances}")
-            print(f"mean org distances: {mean_org_distances}")
-            print(f"mean 'total' distances: {mean_total_distances}")
-            print(f"mean date distances: {mean_date_distances}")
-            print(f"Average: {total_mean}")
+        if epoch == 'init':
+            sys.stdout.close()
+            sys.stdout = original_stdout
+            print(f"Create embeddings and distance plot: ...")
+            original_stdout = sys.stdout
+            sys.stdout = open(os.devnull, 'w')
+            df = df.sort_values(['label'])
+            create_embeddings_plot(self.working_dir, str(epoch), str(step), df)
+            create_distance_plots(self.working_dir, df, embeddings, str(epoch), str(step))
+        elif step is not None:
+            if step % 5 == 0:
+                sys.stdout.close()
+                sys.stdout = original_stdout
+                print(f"Create embeddings and distance plot: ...")
+                original_stdout = sys.stdout
+                sys.stdout = open(os.devnull, 'w')
+                df = df.sort_values(['label'])
+                create_embeddings_plot(self.working_dir, str(epoch), str(step), df)
+                create_distance_plots(self.working_dir, df, embeddings, str(epoch), str(step))
+        sys.stdout.close()
+        sys.stdout = original_stdout
