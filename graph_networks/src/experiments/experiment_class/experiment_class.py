@@ -11,7 +11,7 @@ from src.util.plot import create_confusion_matrix, create_distance_plots, create
 from src.util.metrics.levenshtein import compute_levenshtein
 import numpy as np
 import pandas as pd
-import umap
+from sklearn.decomposition import PCA
 import os, sys
 
 
@@ -191,11 +191,12 @@ class Experiment(BaseExperiment):
         label_list = []
         truth_list = []
         predictions_list = []
-        for e, l, m, o in zip(embeddings_batch, true_labels_batch, mask_lengths, predictions_batch):
-
+        sequence_idxs_list =[]
+        for sequence_idx, (e, l, m, o) in enumerate(zip(embeddings_batch, true_labels_batch, mask_lengths, predictions_batch)):
             embeddings_list.append(e[:m])
             l = l[:m]
             o = o[:m]
+            sequence_idxs_list.append(np.full(m,sequence_idx))
             if self.config.one_hot:
                 tr = [np.argwhere(one_hot == 1)[0][0] for one_hot in l]
                 l = [labels[idx] for idx in tr]
@@ -207,55 +208,26 @@ class Experiment(BaseExperiment):
             label_list.append(l)
             predictions_list.append(o)
 
+        sequence_idxs = np.concatenate(sequence_idxs_list)
         embeddings = np.concatenate(embeddings_list)
         labels = np.concatenate(label_list)
         truth = np.concatenate(truth_list)
         tokens = np.concatenate(tokens_batch)
         predictions = np.concatenate(predictions_list)
-        truth_matching = np.where(truth == predictions, 'correct predictions', 'incorrect predictions')
+        truth_matching = np.where(truth == predictions, 'correct', 'incorrect')
         positions = np.concatenate(positions_batch)
 
-        original_stdout = sys.stdout
-        sys.stdout = open(os.devnull, 'w')
-        if epoch == 'init':
-            self.reducer = umap.UMAP()
-            self.reducer.fit(embeddings)
 
-        transformed = self.reducer.transform(embeddings)
-
-
+        pca70 = PCA(n_components=70)
+        transformed = pca70.fit_transform(embeddings)
         df = pd.DataFrame()
-        df['umap-one'] = transformed[:, 0]
-        df['umap-two'] = transformed[:, 1]
-        df['label'] = labels
+        df['sequence'] = sequence_idxs
         df['token'] = tokens
+        df['label'] = labels
+        df[f"position"] = positions.tolist()
         df['truth_matching'] = truth_matching
-        for i in range(positions.shape[1]):
-            df[f"position_{i}"] = positions[:, i]
+        df['pca'] = transformed.tolist()
         if step is None:
             df.to_pickle(os.path.join(self.working_dir, f"umap_embeddings_{epoch}"))
         else:
             df.to_pickle(os.path.join(self.working_dir, f"umap_embeddings_{epoch}_{step}"))
-
-
-        if epoch == 'init':
-            sys.stdout.close()
-            sys.stdout = original_stdout
-            print(f"Create embeddings and distance plot: ...")
-            original_stdout = sys.stdout
-            sys.stdout = open(os.devnull, 'w')
-            df = df.sort_values(['label'])
-            create_embeddings_plot(self.working_dir, str(epoch), str(step), df)
-            create_distance_plots(self.working_dir, df, embeddings, str(epoch), str(step))
-        elif step is not None:
-            if step % 5 == 0:
-                sys.stdout.close()
-                sys.stdout = original_stdout
-                print(f"Create embeddings and distance plot: ...")
-                original_stdout = sys.stdout
-                sys.stdout = open(os.devnull, 'w')
-                df = df.sort_values(['label'])
-                create_embeddings_plot(self.working_dir, str(epoch), str(step), df)
-                create_distance_plots(self.working_dir, df, embeddings, str(epoch), str(step))
-        sys.stdout.close()
-        sys.stdout = original_stdout

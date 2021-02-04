@@ -11,13 +11,13 @@ batch_size = 10
 
 labels = ['O', 'B-MONEY', 'I-MONEY', 'L-MONEY', 'B-ORG', 'I-ORG', 'L-ORG', 'B-DATE', 'I-DATE', 'L-DATE', 'B-GPE',
           'I-GPE', 'L-GPE']
-node_count = 512
+node_count = 256
 edge_count = 25000
 node_vector_length = 768
 edge_vector_length = 5
 
 penalty = 0.01
-lr_s = [0.0001, 0.0005, 0.001, 0.005, 0.01]
+lr_s = [0.0001, 0.0005, 0.00075,  0.001, 0.005]
 train_test_split = 0.25
 exp = []
 model_ids = ['Graph_Model_Softmax_0_fold_5_classes',
