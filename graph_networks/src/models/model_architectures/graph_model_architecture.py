@@ -30,8 +30,6 @@ class GraphConvV2(keras.layers.Layer):
 
         num_nodes = tf.constant(nodes_shape[1])
         num_edges = tf.constant(edges_shape[1])
-        assert self.node_shape == nodes.shape.as_list()[-1]
-        assert self.edges_shape == edges.shape.as_list()[-1]
 
         num_previous_accumulated_nodes_per_graph = tf.range(0, batch_size) * num_nodes
         offsets = tf.tile(num_previous_accumulated_nodes_per_graph[:, None], [1, num_edges])
@@ -52,44 +50,25 @@ class GraphConvV2(keras.layers.Layer):
                                                    globals=None,
                                                    )
 
-        # Schritt 1
-        # Tripel auf Kanten erstellen
-        a = blocks.broadcast_receiver_nodes_to_edges(combined_graphs_tuple)
-        b = combined_graphs_tuple.edges
-        c = blocks.broadcast_sender_nodes_to_edges(combined_graphs_tuple)
-        d = tf.concat([a, b, c], axis=1)
-
         combined_graphs_tuple = combined_graphs_tuple.replace(
-            edges=d
-        )
+            edges=self.node_layer_out(
+                self.node_layer_in(tf.concat([blocks.broadcast_receiver_nodes_to_edges(combined_graphs_tuple),
+                                              combined_graphs_tuple.edges,
+                                              blocks.broadcast_sender_nodes_to_edges(combined_graphs_tuple)], axis=1))))
 
-        # Schritt 2
-        # Tripel in MLP verarbeiten
-        embeddings = self.node_layer_in(combined_graphs_tuple.edges)
-        combined_graphs_tuple = combined_graphs_tuple.replace(
-            edges=self.node_layer_out(embeddings))
-
-        # schritt 3
-        # hidden states auf knoten zu neuen Embeddings aggregieren
-        # try different reducers
         if self.reducer_type == "mean":
             reducer = tf.math.unsorted_segment_mean
 
         combined_graphs_tuple = combined_graphs_tuple.replace(
             nodes=blocks.ReceivedEdgesToNodesAggregator(reducer=reducer)(combined_graphs_tuple))
 
-        # Schritt4
-        # neuen wert für kante berechnen
         combined_graphs_tuple = combined_graphs_tuple.replace(
             edges=self.edge_layer(combined_graphs_tuple.edges))
 
-        # Schritt5
-        # Graphen wieder in Tensoren aufbrechen
-
-        nodes = tf.reshape(combined_graphs_tuple.nodes, [batch_size, num_nodes, self.node_shape])
-        edges = tf.reshape(combined_graphs_tuple.edges, [batch_size, num_edges, self.edges_shape])
-
-        return nodes, edges, senders, receivers
+        return tf.reshape(combined_graphs_tuple.nodes, [batch_size, num_nodes, self.node_shape]), \
+               tf.reshape(combined_graphs_tuple.edges, [batch_size, num_edges, self.edges_shape]), \
+               senders, \
+               receivers
 
     def compute_output_shape(self, input_shape):
         return input_shape
@@ -166,7 +145,7 @@ class GraphModelCRF:
 
         masking = keras.layers.Masking(name='masking')
         bilstm = layers.Bidirectional(layers.LSTM(bilstm_units, return_sequences=True), name='bilstm')
-        #activation = layers.TimeDistributed(layers.Activation('relu'), name='relu_activation')
+        # activation = layers.TimeDistributed(layers.Activation('relu'), name='relu_activation')
         pre_crf_layer_1 = layers.TimeDistributed(layers.Dense(64, activation='relu'), name='pre_crf_layer_1')
         pre_crf_layer_2 = layers.TimeDistributed(layers.Dense(num_classes, activation='softmax'),
                                                  name='pre_crf_layer_2')
@@ -180,14 +159,14 @@ class GraphModelCRF:
         mask = masking.compute_mask(nodes)
 
         for i in range(0, n_folds):
-            nodes, edges, new_senders, receivers = graph_conv_layer(nodes, edges, senders, receivers)
+            nodes, edges, senders, receivers = graph_conv_layer(nodes, edges, senders, receivers)
 
         graph_embeddings = nodes
         # sequence labeling
         masked_nodes = masking(nodes)
         sequence = bilstm(masked_nodes, mask=mask)
 
-        #activated_sequence = activation(sequence)
+        # activated_sequence = activation(sequence)
         latent_activated_sequence = pre_crf_layer_1(sequence)
         latent_activated_sequence = pre_crf_layer_2(latent_activated_sequence)
 
@@ -222,7 +201,7 @@ class GraphModelCRFv2:
 
         masking = keras.layers.Masking(name='masking')
         bilstm = layers.Bidirectional(layers.LSTM(bilstm_units, return_sequences=True), name='bilstm')
-        #activation = layers.TimeDistributed(layers.Activation('relu'), name='relu_activation')
+        # activation = layers.TimeDistributed(layers.Activation('relu'), name='relu_activation')
         pre_crf_layer_1 = layers.TimeDistributed(layers.Dense(64, activation='relu'), name='pre_crf_layer_1')
         pre_crf_layer_2 = layers.TimeDistributed(layers.Dense(num_classes, activation='softmax'),
                                                  name='pre_crf_layer_2')
@@ -244,7 +223,7 @@ class GraphModelCRFv2:
 
         # sequence labeling
         sequence = bilstm(nodes, mask=mask)
-        #activated_sequence = activation(sequence)
+        # activated_sequence = activation(sequence)
         latent_activated_sequence = pre_crf_layer_1(sequence)
         latent_activated_sequence = pre_crf_layer_2(latent_activated_sequence)
         output = crf_layer(latent_activated_sequence, mask=mask)

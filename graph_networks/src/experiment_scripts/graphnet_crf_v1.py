@@ -8,7 +8,7 @@ os.environ["CUDA_VISIBLE_DEVICES"]="0"
 
 
 n_train_epochs = 5
-batch_size = 10
+batch_size = 5
 
 labels = ['O', 'B-MONEY', 'I-MONEY', 'L-MONEY', 'B-ORG', 'I-ORG', 'L-ORG', 'B-DATE', 'I-DATE', 'L-DATE', 'B-GPE',
           'I-GPE', 'L-GPE']

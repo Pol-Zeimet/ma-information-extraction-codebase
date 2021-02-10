@@ -101,6 +101,10 @@ class GraphExperiment(Experiment):
         super().cleanup()
         self.data_generator_train = None
         self.data_generator_validation = None
+        self.inputs_for_embeddings = None
+        self.targets_for_embeddings = None
+        self.tokens_for_embeddings = None
+        self.positions_for_embeddings = None
 
     def _train(self) -> None:
         print("Training for {} epochs with {} steps and batch size={}".format(str(self.config.n_train_epochs),
@@ -118,7 +122,7 @@ class GraphExperiment(Experiment):
             for train_step in tqdm(range(self.n_train_steps)):
                 inputs_train, targets_train = self.data_generator_train.__getitem__(train_step)
                 loss = self.model.train_on_single_batch(inputs_train, targets_train)
-                mlflow.log_metric("loss", loss[0])
+                mlflow.log_metric("loss", loss)
                 super()._evaluate_embeddings(self.inputs_for_embeddings, self.targets_for_embeddings,
                                              self.tokens_for_embeddings, self.positions_for_embeddings,
                                              epoch, train_step)
