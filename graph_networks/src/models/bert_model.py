@@ -14,7 +14,6 @@ from transformers.integrations import MLflowCallback
 import mlflow
 from statistics import mean
 from Levenshtein import distance as levenshtein_distance
-import torch
 
 
 class BertConfig(Config):
@@ -92,7 +91,7 @@ class BertModel:
                            else None)
 
     def evaluate(self, data):
-        self.trainer_state = 'evaluate'
+        self.trainer_state = 'eval'
         results, metrics = self.predict(data['validation'])
         return self.trainer.evaluate(), self._compute_levenshtein(results, data['validation']['ner_tags'],
                                                                   data['validation']['tokens'])
@@ -277,7 +276,7 @@ class BertModel:
         mean_date_distances = mean(date_distances)
         total_mean = (mean_addr_distances + mean_org_distances + mean_total_distances + mean_date_distances) / 4
 
-        mean_addr_coverages = mean(org_coverages)
+        mean_addr_coverages = mean(addr_coverages)
         mean_org_coverages = mean(org_coverages)
         mean_total_coverages = mean(total_coverages)
         mean_date_coverages = mean(date_coverages)

@@ -4,11 +4,10 @@ from statistics import mean
 
 def postprocess_tokens(tokens_in: list, label_type: str):
 
-    string_out = '.'.join(tokens_in)
-    string_out = ' '.join(string_out)\
-        .replace(' ##', '') \
-        .replace(' ', '') \
-        .strip()
+    string_out = ''.join(tokens_in)
+    string_out = string_out.replace('##', '') \
+                           .replace(' ', '') \
+                           .strip()
 
     if label_type != 'date' and label_type != 'total':
         string_out = string_out.replace(',', '') \
@@ -18,7 +17,7 @@ def postprocess_tokens(tokens_in: list, label_type: str):
     return str.lower(string_out)
 
 
-def compute_levenshtein(y_pred, y_true, tokens, training: bool):
+def compute_levenshtein(y_pred, y_true, token_lists, training: bool):
     addr_distances = []
     org_distances = []
     total_distances = []
@@ -28,27 +27,27 @@ def compute_levenshtein(y_pred, y_true, tokens, training: bool):
     total_coverages = []
     date_coverages = []
 
-    for pred, true, token in zip(y_pred, y_true, tokens):
+    for pred, true, token_list in zip(y_pred, y_true, token_lists):
         true_addr, true_org, true_total, true_date = [], [], [], []
         addr, org, total, date = [], [], [], []
         for idx, (pred_label, true_label) in enumerate(zip(pred, true)):
             if pred_label == 1:
-                total.append(token[idx])
+                total.append(token_list[idx])
             elif pred_label == 2:
-                org.append(token[idx])
+                org.append(token_list[idx])
             elif pred_label == 3:
-                date.append(token[idx])
+                date.append(token_list[idx])
             elif pred_label == 4:
-                addr.append(token[idx])
+                addr.append(token_list[idx])
 
             if true_label == 1:
-                true_total.append(token[idx])
+                true_total.append(token_list[idx])
             elif true_label == 2:
-                true_org.append(token[idx])
+                true_org.append(token_list[idx])
             elif true_label == 3:
-                true_date.append(token[idx])
+                true_date.append(token_list[idx])
             elif true_label == 4:
-                true_addr.append(token[idx])
+                true_addr.append(token_list[idx])
 
         true_addr_text = postprocess_tokens(true_addr, 'addr')
         true_org_text = postprocess_tokens(true_org, 'org')

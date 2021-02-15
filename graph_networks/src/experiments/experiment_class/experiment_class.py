@@ -134,9 +134,9 @@ class Experiment(BaseExperiment):
             y_pred.append(np.concatenate(predictions_list))
         end = time.time()
 
-        tokens_batched = np.concatenate(tokens_batched)
-        y_true_batched = np.concatenate(y_true_batched)
-        y_pred_batched = np.concatenate(y_pred_batched)
+        tokens_batched = [token_list for batch in tokens_batched for token_list in batch]
+        y_true_batched = [y_true_list for batch in y_true_batched for y_true_list in batch]
+        y_pred_batched = [y_pred_list for batch in y_pred_batched for y_pred_list in batch]
         y_true = np.concatenate(y_true)
         y_pred = np.concatenate(y_pred)
         print("TIME: Finished evaluation of test set in " + str(round(end - start, 3)) + "s")
