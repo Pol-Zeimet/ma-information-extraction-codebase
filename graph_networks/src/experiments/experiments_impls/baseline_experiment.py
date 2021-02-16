@@ -165,7 +165,16 @@ class BertExperiment(Experiment):
         super()._run_holdout()
 
     def _final_log(self) -> None:
-        mlflow.log_param("Training/evaluation parameters", self.training_args)
+        args = self.training_args.to_dict()
+        for key in args.keys():
+            mlflow.log_param(key, args[key])
+        mlflow.set_tags({
+            "type": "experiment",
+        })
+        self.mlflow_run_id = self._get_mlflow_run_id()
+        mlflow.log_param('num_classes', self.config.num_classes)
+        mlflow.log_param('model_id', self.config.model_id)
+        mlflow.log_param('model_type', self.config.model_type)
         mlflow.log_artifacts(self.working_dir)
 
     def _setup_logging(self):

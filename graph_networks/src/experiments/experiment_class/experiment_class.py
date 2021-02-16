@@ -36,7 +36,12 @@ class BaseExperiment:
 
     def run(self) -> None:
         with tempfile.TemporaryDirectory() as tmp_dir:
-            mlflow.start_run()
+            model_type = self.config.model_id.split('_')[2]
+            if model_type == 'Bert' or model_type == 'LayoutLM':
+                run_name = self.config.model_id
+            else:
+                run_name = self.config.model_id + str(self.config.learning_rate)
+            mlflow.start_run(run_name=run_name)
             self.working_dir = tmp_dir + "/"
             self._initial_log()
             self._run()

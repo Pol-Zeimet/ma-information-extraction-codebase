@@ -32,8 +32,8 @@ class GraphNetConfig(Config):
                  decay: float = 0.0):
         super(GraphNetConfig, self).__init__(
             logging=logging,
-            num_classes=num_classes)
-        self.model_id = model_id
+            num_classes=num_classes,
+            model_id=model_id)
         self.batch_size = batch_size
         self.n_train_epochs = n_train_epochs
         self.learning_rate = lr

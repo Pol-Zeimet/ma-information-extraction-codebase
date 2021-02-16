@@ -29,9 +29,9 @@ class BertConfig(Config):
                  overwrite_output_dir: bool = False,
                  logging: bool = True):
         super().__init__(logging=logging,
-                         num_classes=num_classes)
+                         num_classes=num_classes,
+                         model_id=model_id)
         self.model_dir = model_dir
-        self.model_id = model_id
         self.model_type = model_type
         self.label_list = label_list
         self.train_f = train_f
@@ -46,7 +46,7 @@ class BertModel:
         self.logging = config.logging
         self.working_dir = working_dir
 
-        self.label_list = config.label_list
+        self.label_list = self._get_label_list(config.label_list)
         self.model_id = config.model_id
         self.model_type = config.model_type
 
@@ -59,6 +59,15 @@ class BertModel:
         self.trainer: Trainer = None
         self.trainer_state = None
         self._create_model_architecture()
+
+    @staticmethod
+    def _get_label_list(given_labels):
+        unique_labels = set()
+        for label in given_labels:
+            unique_labels = unique_labels | set(label)
+        label_list = list(unique_labels)
+        label_list.sort()
+        return label_list
 
     def get_details(self) -> Dict[str, Any]:
         return {
@@ -254,52 +263,99 @@ class BertModel:
             if len(true_org_text) > 0:
                 org_text_distance = levenshtein_distance(org_text, true_org_text)
                 org_distances.append(org_text_distance)
-                org_coverages.append((len(true_org_text) - org_text_distance) / len(true_org_text) * 100)
+                if len(true_org_text) > org_text_distance:
+                    org_coverages.append((len(true_org_text) - org_text_distance) / len(true_org_text) * 100)
+                else:
+                    org_coverages.append((org_text_distance - len(true_org_text)) / len(true_org_text) * 100)
+
             if len(true_addr_text) > 0:
                 addr_text_distance = levenshtein_distance(addr_text, true_addr_text)
                 addr_distances.append(addr_text_distance)
-                addr_coverages.append((len(true_addr_text) - addr_text_distance) / len(true_addr_text) * 100)
+                if len(true_addr_text) > addr_text_distance:
+                    addr_coverages.append((len(true_addr_text) - addr_text_distance) / len(true_addr_text) * 100)
+                else:
+                    addr_coverages.append((addr_text_distance - len(true_addr_text)) / len(true_addr_text) * 100)
             if len(true_date_text) > 0:
                 date_text_distance = levenshtein_distance(date_text, true_date_text)
                 date_distances.append(date_text_distance)
-                date_coverages.append((len(true_date_text) - date_text_distance) / len(true_date_text) * 100)
+                if len(true_date_text) > date_text_distance:
+                    date_coverages.append((len(true_date_text) - date_text_distance) / len(true_date_text) * 100)
+                else:
+                    date_coverages.append((date_text_distance - len(true_date_text)) / len(true_date_text) * 100)
             if len(true_total_text) > 0:
                 total_text_distance = levenshtein_distance(total_text, true_total_text)
                 total_distances.append(total_text_distance)
-                total_coverages.append((len(true_total_text) - total_text_distance) / len(true_total_text) * 100)
+                if len(true_total_text) > total_text_distance:
+                    total_coverages.append((len(true_total_text) - total_text_distance) / len(true_total_text) * 100)
+                else:
+                    total_coverages.append((total_text_distance - len(true_total_text)) / len(true_total_text) * 100)
 
+        all_distance_means = []
+        all_coverage_means = []
 
+        if len(addr_distances) > 0:
+            mean_addr_distances = mean(addr_distances)
+            mean_addr_coverages = mean(addr_coverages)
+            all_distance_means.append(mean_addr_distances)
+            all_coverage_means.append(mean_addr_coverages)
 
-        mean_addr_distances = mean(addr_distances)
-        mean_org_distances = mean(org_distances)
-        mean_total_distances = mean(total_distances)
-        mean_date_distances = mean(date_distances)
-        total_mean = (mean_addr_distances + mean_org_distances + mean_total_distances + mean_date_distances) / 4
+            mlflow.log_metric(f'eval_mean_addr_distances', mean_addr_distances)
+            mlflow.log_metric(f'eval_mean_addr_coverage', mean_addr_coverages)
+        else:
+            mean_addr_distances = -1000
+            mean_addr_coverages = -1000
 
-        mean_addr_coverages = mean(addr_coverages)
-        mean_org_coverages = mean(org_coverages)
-        mean_total_coverages = mean(total_coverages)
-        mean_date_coverages = mean(date_coverages)
-        mean_coverage = (mean_addr_coverages + mean_org_coverages + mean_total_coverages + mean_date_coverages) / 4
+        if len(org_distances) > 0:
+            mean_org_distances = mean(org_distances)
+            mean_org_coverages = mean(org_coverages)
+            all_distance_means.append(mean_org_distances)
+            all_coverage_means.append(mean_org_coverages)
 
-        mlflow.log_metric('eval_mean_addr_distances', mean_addr_distances)
-        mlflow.log_metric('eval_mean_org_distances', mean_org_distances)
-        mlflow.log_metric('eval_mean_total_distances', mean_total_distances)
-        mlflow.log_metric('eval_mean_date_distances', mean_date_distances)
-        mlflow.log_metric('eval_total_mean', total_mean)
+            mlflow.log_metric(f'eval_mean_org_distances', mean_org_distances)
+            mlflow.log_metric(f'eval_mean_org_coverage', mean_org_coverages)
+        else:
+            mean_org_distances = -1000
+            mean_org_coverages = -1000
 
-        mlflow.log_metric(f'eval_mean_addr_coverage', mean_addr_coverages)
-        mlflow.log_metric(f'eval_mean_org_coverage', mean_org_coverages)
-        mlflow.log_metric(f'eval_mean_total_coverage', mean_total_coverages)
-        mlflow.log_metric(f'eval_mean_date_coverage', mean_date_coverages)
-        mlflow.log_metric(f'eval_mean_coverage', mean_coverage)
+        if len(total_distances) > 0:
+            mean_total_distances = mean(total_distances)
+            mean_total_coverages = mean(total_coverages)
+            all_distance_means.append(mean_total_distances)
+            all_coverage_means.append(mean_total_coverages)
+
+            mlflow.log_metric(f'eval_mean_total_distances', mean_total_distances)
+            mlflow.log_metric(f'eval_mean_total_coverage', mean_total_coverages)
+        else:
+            mean_total_distances = -1000
+            mean_total_coverages = -1000
+
+        if len(date_distances) > 0:
+            mean_date_distances = mean(date_distances)
+            mean_date_coverages = mean(date_coverages)
+            all_distance_means.append(mean_date_distances)
+            all_coverage_means.append(mean_date_coverages)
+
+            mlflow.log_metric(f'eval_mean_date_distances', mean_date_distances)
+            mlflow.log_metric(f'eval_mean_date_coverage', mean_date_coverages)
+        else:
+            mean_date_distances = -1000
+            mean_date_coverages = -1000
+
+        if len(all_distance_means) > 0:
+            total_distance_mean = mean(all_distance_means)
+            mean_coverage = mean(all_coverage_means)
+            mlflow.log_metric(f'eval_total_mean', total_distance_mean)
+            mlflow.log_metric(f'eval_mean_coverage', mean_coverage)
+        else:
+            total_distance_mean = -1000
+            mean_coverage = -1000
 
         return {
             'eval_mean_addr_distances': mean_addr_distances,
             'eval_mean_org_distances': mean_org_distances,
             'eval_mean_total_distances': mean_total_distances,
             'eval_mean_date_distances': mean_date_distances,
-            'eval_total_mean': total_mean,
+            'eval_total_mean': total_distance_mean,
             'eval_mean_addr_coverage': mean_addr_coverages,
             'eval_mean_org_coverage': mean_org_coverages,
             'eval_mean_total_coverage': mean_total_coverages,
