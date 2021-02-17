@@ -21,8 +21,7 @@ train_test_split = 0.25
 exp = []
 model_ids = ['Graph_Model_CRFv2_0_fold_5_classes',
              'Graph_Model_CRFv2_1_fold_5_classes',
-             'Graph_Model_CRFv2_2_fold_5_classes',
-             'Graph_Model_CRFv2_3_fold_5_classes']
+             'Graph_Model_CRFv2_2_fold_5_classes']
 
 exp.extend(GraphExperiment(GraphNetConfig(batch_size=batch_size,
                                           n_train_epochs=n_train_epochs,
@@ -37,6 +36,34 @@ exp.extend(GraphExperiment(GraphNetConfig(batch_size=batch_size,
                                           reducer_type='mean',
                                           input_units=768,
                                           intermediate_units=768,
+                                          bilstm_units=64,
+                                          train_test_split=train_test_split,
+                                          lr=lr,
+                                          shuffle=True,
+                                          one_hot=True if model_id.split('_')[2] == 'Softmax' else False),
+                           data_src=os.path.abspath('ma-information-extraction-codebase/graph_networks/data/SROIE/graphs/'),
+                           label_src=os.path.abspath('ma-information-extraction-codebase/graph_networks/data/SROIE/labels/'),
+                           additional_data_src = os.path.abspath('ma-information-extraction-codebase/graph_networks/data/SROIE/results_df.json'),
+                           labels=labels,
+                           slug_src=os.path.abspath('ma-information-extraction-codebase/graph_networks/data/SROIE/slugs.npy'))
+           for model_id in model_ids for lr in lr_s)
+
+batch_size = 2
+model_ids = ['Graph_Model_CRFv2_3_fold_5_classes']
+
+exp.extend(GraphExperiment(GraphNetConfig(batch_size=batch_size,
+                                          n_train_epochs=n_train_epochs,
+                                          n_folds=int(model_id.split('_')[3]),
+                                          penalty=penalty,
+                                          model_id=model_id,
+                                          node_count=node_count,
+                                          edge_count=edge_count,
+                                          node_vector_length=node_vector_length,
+                                          edge_vector_length=edge_vector_length,
+                                          num_classes=int(model_id.split('_')[-2]),
+                                          reducer_type='mean',
+                                          input_units=192,
+                                          intermediate_units=384,
                                           bilstm_units=64,
                                           train_test_split=train_test_split,
                                           lr=lr,

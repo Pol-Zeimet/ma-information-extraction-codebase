@@ -147,5 +147,7 @@ class GraphExperiment(Experiment):
         raise NotImplementedError
 
     def _final_log(self) -> None:
+        mlflow.log_param('data', self.data_src.split('/')[-2])
         super()._final_log()
+
 

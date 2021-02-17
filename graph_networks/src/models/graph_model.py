@@ -133,11 +133,11 @@ class GraphModel:
         return self.model.fit(verbose=1, x=train_generator, epochs=15, steps_per_epoch=20)
 
     def train_on_single_batch(self, inputs, targets):
-        result = self.model.train_on_batch(inputs, targets)
+        result = self.model.train_on_batch(inputs, targets, return_dict=True)
         if self.model_type == "Softmax":
-            loss = result[0]
+            loss = result['loss']
         else:
-            loss = result
+            loss = result['crf_loss']
         return loss
 
     def predict(self, x) -> (np.ndarray, np.ndarray):
