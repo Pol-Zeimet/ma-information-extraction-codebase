@@ -119,7 +119,9 @@ class GraphExperiment(Experiment):
                                      step=None)
 
         for epoch in tqdm(range(self.config.n_train_epochs)):
-            for train_step in tqdm(range(self.n_train_steps)):
+            for train_step in tqdm(range(self.n_train_steps), ascii=True, desc=f"{self.config.model_id}, "
+                                                                               f" {self.config.learning_rate},"
+                                                                               f"  epoch {epoch}"):
                 inputs_train, targets_train = self.data_generator_train.__getitem__(train_step)
                 loss = self.model.train_on_single_batch(inputs_train, targets_train)
                 mlflow.log_metric("loss", loss)
@@ -147,7 +149,7 @@ class GraphExperiment(Experiment):
         raise NotImplementedError
 
     def _final_log(self) -> None:
-        mlflow.log_param('data', self.data_src.split('/')[-2])
+        mlflow.log_param('data', self.data_src.split('/')[-2]+self.data_src.split('/')[-1])
         super()._final_log()
 
 

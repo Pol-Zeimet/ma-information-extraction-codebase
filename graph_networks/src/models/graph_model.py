@@ -115,7 +115,7 @@ class GraphModel:
                                               adam
                                               )
 
-        elif self.model_type == "CRFv2":
+        elif self.model_type == "CRFv2" or self.model_type == "CRFv3":
             self.model = GraphModelCRFv2.create(self.config.node_count,
                                                 self.config.edge_count,
                                                 self.config.node_vector_length,

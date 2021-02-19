@@ -11,8 +11,8 @@ batch_size = 5
 labels = ['O', 'B-MONEY', 'I-MONEY', 'L-MONEY', 'B-ORG', 'I-ORG', 'L-ORG', 'B-DATE', 'I-DATE', 'L-DATE', 'B-GPE',
           'I-GPE', 'L-GPE']
 node_count = 256
-edge_count = 25000
-node_vector_length = 768
+edge_count = 28000
+node_vector_length = 250
 edge_vector_length = 5
 
 penalty = 0.01
@@ -34,16 +34,16 @@ exp.extend(GraphExperiment(GraphNetConfig(batch_size=batch_size,
                                           edge_vector_length=edge_vector_length,
                                           num_classes=int(model_id.split('_')[-2]),
                                           reducer_type='mean',
-                                          input_units=768,
-                                          intermediate_units=768,
+                                          input_units=250,
+                                          intermediate_units=250,
                                           bilstm_units=64,
                                           train_test_split=train_test_split,
                                           lr=lr,
                                           shuffle=True,
                                           one_hot=True if model_id.split('_')[2] == 'Softmax' else False),
-                           data_src=os.path.abspath('ma-information-extraction-codebase/graph_networks/data/SROIE/graphs/'),
-                           label_src=os.path.abspath('ma-information-extraction-codebase/graph_networks/data/SROIE/labels/'),
-                           additional_data_src = os.path.abspath('ma-information-extraction-codebase/graph_networks/data/SROIE/results_df.json'),
+                           data_src=os.path.abspath('ma-information-extraction-codebase/graph_networks/data/SROIE/graphs_w2v/'),
+                           label_src=os.path.abspath('ma-information-extraction-codebase/graph_networks/data/SROIE/labels_w2v/'),
+                           additional_data_src = os.path.abspath('ma-information-extraction-codebase/graph_networks/data/SROIE/results_df_v2.json'),
                            labels=labels,
                            slug_src=os.path.abspath('ma-information-extraction-codebase/graph_networks/data/SROIE/slugs.npy'))
            for model_id in model_ids for lr in lr_s)
@@ -62,16 +62,16 @@ exp.extend(GraphExperiment(GraphNetConfig(batch_size=batch_size,
                                           edge_vector_length=edge_vector_length,
                                           num_classes=int(model_id.split('_')[-2]),
                                           reducer_type='mean',
-                                          input_units=768,
-                                          intermediate_units=768,
+                                          input_units=250,
+                                          intermediate_units=250,
                                           bilstm_units=64,
                                           train_test_split=train_test_split,
                                           lr=lr,
                                           shuffle=True,
                                           one_hot=True if model_id.split('_')[2] == 'Softmax' else False),
-                           data_src=os.path.abspath('ma-information-extraction-codebase/graph_networks/data/SROIE/graphs/'),
-                           label_src=os.path.abspath('ma-information-extraction-codebase/graph_networks/data/SROIE/labels/'),
-                           additional_data_src = os.path.abspath('ma-information-extraction-codebase/graph_networks/data/SROIE/results_df.json'),
+                           data_src=os.path.abspath('ma-information-extraction-codebase/graph_networks/data/SROIE/graphs_w2v/'),
+                           label_src=os.path.abspath('ma-information-extraction-codebase/graph_networks/data/SROIE/labels_w2v/'),
+                           additional_data_src = os.path.abspath('ma-information-extraction-codebase/graph_networks/data/SROIE/results_df_v2.json'),
                            labels=labels,
                            slug_src=os.path.abspath('ma-information-extraction-codebase/graph_networks/data/SROIE/slugs.npy'))
            for model_id in model_ids for lr in lr_s)
