@@ -75,10 +75,10 @@ class DataGenerator(keras.utils.Sequence):
 
     def __data_generation(self, list_slugs_temp):
         # Generates data containing batch_size samples
-        x = [np.zeros(shape=(self.batch_size, self.node_count, self.node_shape)),
-             np.zeros(shape=(self.batch_size, self.edge_count, self.edge_shape)),
-             np.zeros(shape=(self.batch_size, self.edge_count), dtype='int32'),
-             np.zeros(shape=(self.batch_size, self.edge_count), dtype='int32')]
+        x = [np.full((self.batch_size, self.node_count, self.node_shape), -1, dtype='float32'),
+             np.full((self.batch_size, self.edge_count, self.edge_shape), -1, dtype='float32'),
+             np.full((self.batch_size, self.edge_count), -1, dtype='int32'),
+             np.full((self.batch_size, self.edge_count), -1, dtype='int32')]
 
         if self.one_hot:
             y = np.full((self.batch_size, self.node_count, len(self.labels)), 0, dtype='int32')
@@ -97,10 +97,7 @@ class DataGenerator(keras.utils.Sequence):
                 x[1][i][0:len(graph[2])] = graph[2]  # creating batch of edges
 
                 x[2][i][0:len(graph[3])] = graph[3]  # creating batch of senders
-                x[2][i][len(graph[3]):] = -1  # setting senders for added edges to -1
-
                 x[3][i][0:len(graph[4])] = graph[4]  # creating batch of receivers
-                x[3][i][len(graph[4]):] = -1  # setting receivers for added edges to -1
 
                 # load Labels
                 i_labels = np.load(os.path.join(self.label_src, slug + '.npy'), allow_pickle=True)
@@ -190,10 +187,10 @@ class DataGeneratorReducedLabels(keras.utils.Sequence):
     def __data_generation(self, list_slugs_temp):
         # Generates data containing batch_size samples
 
-        x = [np.zeros(shape=(self.batch_size, self.node_count, self.node_shape), ),
-             np.zeros(shape=(self.batch_size, self.edge_count, self.edge_shape)),
-             np.zeros(shape=(self.batch_size, self.edge_count), dtype='int32'),
-             np.zeros(shape=(self.batch_size, self.edge_count), dtype='int32')]
+        x = [np.full((self.batch_size, self.node_count, self.node_shape), -1, dtype='float32'),
+             np.full((self.batch_size, self.edge_count, self.edge_shape), -1, dtype='float32'),
+             np.full((self.batch_size, self.edge_count), -1, dtype='int32'),
+             np.full((self.batch_size, self.edge_count), -1, dtype='int32')]
 
         if self.one_hot:
             y = np.full((self.batch_size, self.node_count, 5), 0, dtype='int32')
@@ -208,14 +205,11 @@ class DataGeneratorReducedLabels(keras.utils.Sequence):
                 graph = np.load(os.path.join(self.graph_src, slug + '.npy'), allow_pickle=True)
 
                 # i is batch index
-                x[0][i][0:len(graph[1])] = graph[1]  # creating batch of nodes
-                x[1][i][0:len(graph[2])] = graph[2]  # creating batch of edges
+                x[0][i][0:len(graph[1])] = graph[1]  # creating list of nodes
+                x[1][i][0:len(graph[2])] = graph[2]  # creating list of edges
+                x[2][i][0:len(graph[3])] = graph[3]  # creating list of senders
+                x[3][i][0:len(graph[4])] = graph[4]  # creating list of receivers
 
-                x[2][i][0:len(graph[3])] = graph[3]  # creating batch of senders
-                x[2][i][len(graph[3]):] = -1  # setting senders for added edges to -1
-
-                x[3][i][0:len(graph[4])] = graph[4]  # creating batch of receivers
-                x[3][i][len(graph[4]):] = -1  # setting receivers for added edges to -1
 
                 # load Labels
                 i_labels = np.load(os.path.join(self.label_src, slug + '.npy'), allow_pickle=True)

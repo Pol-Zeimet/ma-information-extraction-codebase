@@ -92,7 +92,7 @@ class GraphModelSoftmax:
                                        reducer_type=reducer_type,
                                        name='graph_conv')
 
-        masking = keras.layers.Masking(name='masking')
+        masking = keras.layers.Masking(mask_value=-1, name='masking')
         bilstm = layers.Bidirectional(layers.LSTM(bilstm_units, return_sequences=True), name='bilstm', )
         # activation =  layers.Activation('relu', name = 'relu_activation')
         pre_output_layer = layers.TimeDistributed(layers.Dense(64, activation='relu'))
@@ -143,7 +143,7 @@ class GraphModelCRF:
                                        reducer_type=reducer_type,
                                        name='graph_conv')
 
-        masking = keras.layers.Masking(name='masking')
+        masking = keras.layers.Masking(mask_value=-1, name='masking')
         bilstm = layers.Bidirectional(layers.LSTM(bilstm_units, return_sequences=True), name='bilstm')
         # activation = layers.TimeDistributed(layers.Activation('relu'), name='relu_activation')
         pre_crf_layer_1 = layers.TimeDistributed(layers.Dense(64, activation='relu'), name='pre_crf_layer_1')
@@ -199,7 +199,7 @@ class GraphModelCRFv2:
                                        reducer_type=reducer_type,
                                        name='graph_conv')
 
-        masking = keras.layers.Masking(name='masking')
+        masking = keras.layers.Masking(mask_value=-1, name='masking')
         bilstm = layers.Bidirectional(layers.LSTM(bilstm_units, return_sequences=True), name='bilstm')
         # activation = layers.TimeDistributed(layers.Activation('relu'), name='relu_activation')
         pre_crf_layer_1 = layers.TimeDistributed(layers.Dense(64, activation='relu'), name='pre_crf_layer_1')
