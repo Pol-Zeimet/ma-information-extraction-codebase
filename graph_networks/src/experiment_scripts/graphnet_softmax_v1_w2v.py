@@ -12,7 +12,7 @@ batch_size = 5
 labels = ['O', 'B-MONEY', 'I-MONEY', 'L-MONEY', 'B-ORG', 'I-ORG', 'L-ORG', 'B-DATE', 'I-DATE', 'L-DATE', 'B-GPE',
           'I-GPE', 'L-GPE']
 node_count = 256
-edge_count = 28000
+edge_count = 12500
 node_vector_length = 250
 edge_vector_length = 5
 
