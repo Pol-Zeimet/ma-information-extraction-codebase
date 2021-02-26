@@ -5,11 +5,12 @@ from transformers import (
     PreTrainedTokenizerBase,
     LayoutLMForTokenClassification
 )
-from src.models.layoutlm_model import LayoutLMConfig
+from src.experiments.experiment_class.experiment_class import Config
+
 
 class LayoutLM:
     @staticmethod
-    def create(config: LayoutLMConfig) \
+    def create(config: Config) \
             -> (PreTrainedTokenizerBase,AutoModelForTokenClassification):
         tokenizer = LayoutLMTokenizer.from_pretrained(config.model_name_or_path)
         model = LayoutLMForTokenClassification.from_pretrained(config.model_name_or_path, num_labels=config.num_classes)

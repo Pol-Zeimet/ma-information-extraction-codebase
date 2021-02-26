@@ -2,45 +2,43 @@ import os
 from typing import Dict, Any
 from src.experiments.config import Config
 from src.models.model_architectures.layoutLM_architecture import LayoutLM
-from src.util.metrics.baseline_metrics import accuracy_score, recall_score, precision_score, f1_score
 from src.util.metrics.levenshtein import postprocess_tokens
 from src.util.plot import create_confusion_matrix
-import numpy as np
 from transformers import AutoModelForTokenClassification, \
     PreTrainedTokenizerBase
 import mlflow
 from statistics import mean
 from Levenshtein import distance as levenshtein_distance
-from tqdm import tqdm
 from torch.nn import CrossEntropyLoss
+from seqeval.metrics import (
+    classification_report,
+    f1_score,
+    precision_score,
+    recall_score,
+    accuracy_score
+)
+import numpy as np
+import torch
 
 
 class LayoutLMConfig(Config):
     def __init__(self,
-                 model_dir: str,
                  model_id: str,
                  model_type: str,
-                 label_list: [str],
                  num_classes: int,
                  n_train_epochs: int,
                  data_dir: str,
                  learning_rate: float = 5e-5,
                  max_seq_length: int=512,
-                 model_name_or_path: str = "microsoft/layoutlm-base-uncased",
-                 overwrite_output_dir: bool = False,
-                 logging: bool = True):
-        super().__init__(logging=logging,
-                         num_classes=num_classes,
+                 model_name_or_path: str = "microsoft/layoutlm-base-uncased"):
+        super().__init__(num_classes=num_classes,
                          model_id=model_id)
-        self.model_dir = model_dir
         self.n_train_epochs = n_train_epochs
 
         self.model_name_or_path = model_name_or_path
         self.model_type = model_type
-        self.label_list = label_list
         self.data_dir = data_dir
         self.max_seq_length = max_seq_length
-        self.overwrite_output_dir = overwrite_output_dir
         self.pad_token_label_id = CrossEntropyLoss().ignore_index
         self.learning_rate = learning_rate
 
@@ -50,27 +48,26 @@ class LayoutLMModel:
         self.config = config
         self.working_dir = working_dir
 
-        self.label_list = self._get_label_list(config.label_list)
+        self.label_list = self._get_label_list(os.path.join(config.data_dir, "labels.txt"))
         self.label_map = {i: label for i, label in enumerate(self.label_list)}
         self.model_id = config.model_id
         self.model_type = config.model_type
 
         self.model: AutoModelForTokenClassification = None
         self.tokenizer: PreTrainedTokenizerBase = None
-        self._create_model_architecture()
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+        self._create_model_architecture()
         self.global_step = 0
         self.global_epoch = 0
         self.state = None
 
     @staticmethod
-    def _get_label_list(given_labels):
-        unique_labels = set()
-        for label in given_labels:
-            unique_labels = unique_labels | set(label)
-        label_list = list(unique_labels)
-        label_list.sort()
-        return label_list
+    def _get_label_list(path):
+        with open(path, "r") as f:
+            labels = f.read().splitlines()
+        if "O" not in labels:
+            labels = ["O"] + labels
+        return labels
 
     def get_details(self) -> Dict[str, Any]:
         return {
@@ -98,6 +95,9 @@ class LayoutLMModel:
         self.model.eval()
         return self.predict(data)
 
+    def get_model_parameters(self):
+        return self.model.parameters()
+
     def set_working_dir(self, path):
         self.working_dir = path
 
@@ -111,8 +111,8 @@ class LayoutLMModel:
                                 self.label_list,
                                 epoch=epoch,
                                 step=step,
-                                y_pred=predictions,
-                                y_true=labels)
+                                y_pred=np.asarray([item for sublist in predictions for item in sublist]),
+                                y_true=np.asarray([item for sublist in labels for item in sublist]))
         acc = accuracy_score(labels, predictions)
         precision = precision_score(labels, predictions)
         recall = recall_score(labels, predictions)
@@ -142,17 +142,17 @@ class LayoutLMModel:
 
         for pred, true, token in zip(y_pred, y_true, tokens):
             org, total, addr, date = [], [], [], []
-            for result in pred:
-                if result[-1] != 'O':
-                    tag = result[-1].split('-')[-1]
+            for text, result in zip(token, pred):
+                if result != 'O':
+                    tag = result.split('-')[-1]
                     if tag == 'ORG':
-                        org.append(result[0])
+                        org.append(text)
                     elif tag == 'GPE':
-                        addr.append(result[0])
+                        addr.append(text)
                     elif tag == 'DATE':
-                        date.append(result[0])
+                        date.append(text)
                     elif tag == 'MONEY':
-                        total.append(result[0])
+                        total.append(text)
 
             true_org, true_total, true_addr, true_date = [], [], [], []
 

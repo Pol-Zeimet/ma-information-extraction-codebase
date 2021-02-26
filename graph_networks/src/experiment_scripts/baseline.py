@@ -1,5 +1,7 @@
 import os
-from src import BertExperiment, ExperimentPipeline, BertConfig
+from src.experiments.experiments_impls.baseline_experiment import BertExperiment
+from src import ExperimentPipeline
+from src.models.bert_model import BertConfig
 
 os.environ["CUDA_DEVICE_ORDER"]="PCI_BUS_ID"
 os.environ["CUDA_VISIBLE_DEVICES"]="0"
