@@ -22,6 +22,7 @@ class BaseExperiment:
         self.working_dir: str = None
         self.mlflow_run_id: str = None
 
+
     @abstractmethod
     def setup(self) -> None:
         raise NotImplementedError
@@ -75,6 +76,7 @@ class Experiment(BaseExperiment):
         self.train_set: pd.DataFrame = None
         self.val_set: pd.DataFrame = None
         self.model = None
+        self.pca70 = None
 
     def _initial_log(self) -> None:
         super()._initial_log()
@@ -224,9 +226,11 @@ class Experiment(BaseExperiment):
         truth_matching = np.where(truth == predictions, 'correct', 'incorrect')
         positions = np.concatenate(positions_batch)
 
-        #TODO einmal fit und dann transform, in mlflow ein tag dafür setzen
-        pca70 = PCA(n_components=70)
-        transformed = pca70.fit_transform(embeddings)
+        if epoch == 'init':
+            self.pca70 = PCA(n_components=70)
+            transformed = self.pca70.fit_transform(embeddings)
+        else:
+            transformed = self.pca70.transform(embeddings)
         df = pd.DataFrame()
         df['sequence'] = sequence_idxs
         df['token'] = tokens

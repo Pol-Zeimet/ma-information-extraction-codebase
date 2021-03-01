@@ -234,7 +234,7 @@ class GraphModelCRFv2:
         return model
 
 
-class GraphModelSoftmax:
+class GraphModelSoftmaxWithConcat:
     @staticmethod
     def create(node_count, edge_count, node_vector_length=768, edge_vector_length=5, n_folds=2, num_classes=5,
                reducer_type="mean", input_units=768, intermediate_units=768, bilstm_units=64, optimizer=None):
@@ -254,7 +254,6 @@ class GraphModelSoftmax:
 
         masking = keras.layers.Masking(mask_value=-1, name='masking')
         bilstm = layers.Bidirectional(layers.LSTM(bilstm_units, return_sequences=True), name='bilstm', )
-        # activation =  layers.Activation('relu', name = 'relu_activation')
         pre_output_layer = layers.TimeDistributed(layers.Dense(64, activation='relu'))
         output_layer = layers.TimeDistributed(layers.Dense(num_classes, activation='softmax'), name='outputlayer')
 
@@ -271,10 +270,9 @@ class GraphModelSoftmax:
         for fold in range(n_folds):
             graph_embeddings, edges, new_senders, receivers = graph_conv_layer(graph_embeddings, edges, senders, receivers)
 
-        concatenated_embeddings = tf.concat([graph_embeddings, nodes], axis=1)
+        concatenated_embeddings = tf.concat([graph_embeddings, nodes], axis=1, name='embedding-concatenation')
 
         sequence = bilstm(concatenated_embeddings, mask=mask)
-        # activated_sequence = activation(sequence)
         pre_output = pre_output_layer(sequence)
 
         output = output_layer(pre_output)
@@ -287,7 +285,7 @@ class GraphModelSoftmax:
         return model
 
 
-class GraphModelCRFv2_with_concat:
+class GraphModelCRFv2WithConcat:
     @staticmethod
     def create(node_count, edge_count, node_vector_length=768, edge_vector_length=5, n_folds=2, num_classes=5,
                reducer_type="mean", input_units=768, intermediate_units=768, bilstm_units=64, optimizer=None):
@@ -324,7 +322,7 @@ class GraphModelCRFv2_with_concat:
         for fold in range(n_folds):
             graph_embeddings, edges, new_senders, receivers = graph_conv_layer(graph_embeddings, edges, senders, receivers)
 
-        concatenated_embeddings = tf.concat([graph_embeddings, nodes], axis=1)
+        concatenated_embeddings = tf.concat([graph_embeddings, nodes], axis=1, name='embedding-concatenation')
         # sequence labeling
         sequence = bilstm(concatenated_embeddings, mask=mask)
 

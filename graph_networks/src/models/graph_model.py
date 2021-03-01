@@ -4,7 +4,11 @@ import numpy as np
 from tensorflow import argmax as tf_argmax, one_hot as tf_one_hot
 from tensorflow.keras import optimizers
 from src.experiments.config import Config
-from src.models.model_architectures.graph_model_architecture import GraphModelSoftmax, GraphModelCRF, GraphModelCRFv2
+from src.models.model_architectures.graph_model_architecture import (GraphModelSoftmax,
+                                                                     GraphModelCRF,
+                                                                     GraphModelCRFv2,
+                                                                     GraphModelCRFv2WithConcat,
+                                                                     GraphModelSoftmaxWithConcat)
 from tensorflow.keras import Model
 
 
@@ -100,6 +104,19 @@ class GraphModel:
                                                   self.config.bilstm_units,
                                                   adam
                                                   )
+        if self.model_type == "SoftmaxConcat":
+            self.model = GraphModelSoftmaxWithConcat.create(self.config.node_count,
+                                                            self.config.edge_count,
+                                                            self.config.node_vector_length,
+                                                            self.config.edge_vector_length,
+                                                            self.config.n_folds,
+                                                            self.config.num_classes,
+                                                            self.config.reducer_type,
+                                                            self.config.input_units,
+                                                            self.config.intermediate_units,
+                                                            self.config.bilstm_units,
+                                                            adam
+                                                            )
 
         elif self.model_type == "CRF":
             self.model = GraphModelCRF.create(self.config.node_count,
@@ -128,6 +145,20 @@ class GraphModel:
                                                 self.config.bilstm_units,
                                                 adam
                                                 )
+
+        elif self.model_type == "CRFv2Concat":
+            self.model = GraphModelCRFv2WithConcat.create(self.config.node_count,
+                                                          self.config.edge_count,
+                                                          self.config.node_vector_length,
+                                                          self.config.edge_vector_length,
+                                                          self.config.n_folds,
+                                                          self.config.num_classes,
+                                                          self.config.reducer_type,
+                                                          self.config.input_units,
+                                                          self.config.intermediate_units,
+                                                          self.config.bilstm_units,
+                                                          adam
+                                                          )
 
     def train_on_generator(self, train_generator):
         return self.model.fit(verbose=1, x=train_generator, epochs=15, steps_per_epoch=20)
