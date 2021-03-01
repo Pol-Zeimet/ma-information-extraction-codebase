@@ -165,7 +165,7 @@ class GraphModel:
 
     def train_on_single_batch(self, inputs, targets):
         result = self.model.train_on_batch(inputs, targets, return_dict=True)
-        if self.model_type == "Softmax":
+        if self.model_type.startswith('Softmax'):
             loss = result['loss']
         else:
             loss = result['crf_loss']
@@ -173,7 +173,7 @@ class GraphModel:
 
     def predict(self, x) -> (np.ndarray, np.ndarray):
         output = self.model.predict(x)
-        if self.model_type == 'Softmax':
+        if self.model_type.startswith('Softmax'):
             predictions = output[0]
             graph_embeddings = output[1]
             masks = [np.argwhere(mask == False)[0][0] for mask in output[2]]

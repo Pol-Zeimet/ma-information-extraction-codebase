@@ -265,12 +265,12 @@ class GraphModelSoftmaxWithConcat:
         mask = masking.compute_mask(nodes)
 
         # sequence labeling
-        graph_embeddings = nodes
+        graph_embeddings = tf.identity(nodes)
 
         for fold in range(n_folds):
             graph_embeddings, edges, new_senders, receivers = graph_conv_layer(graph_embeddings, edges, senders, receivers)
 
-        concatenated_embeddings = tf.concat([graph_embeddings, nodes], axis=1, name='embedding-concatenation')
+        concatenated_embeddings = tf.concat([graph_embeddings, nodes], axis=2, name='embedding-concatenation')
 
         sequence = bilstm(concatenated_embeddings, mask=mask)
         pre_output = pre_output_layer(sequence)
@@ -318,11 +318,11 @@ class GraphModelCRFv2WithConcat:
         receivers = receivers_input
         mask = masking.compute_mask(nodes)
 
-        graph_embeddings = nodes
+        graph_embeddings = tf.identity(nodes)
         for fold in range(n_folds):
             graph_embeddings, edges, new_senders, receivers = graph_conv_layer(graph_embeddings, edges, senders, receivers)
 
-        concatenated_embeddings = tf.concat([graph_embeddings, nodes], axis=1, name='embedding-concatenation')
+        concatenated_embeddings = tf.concat([graph_embeddings, nodes], axis=2, name='embedding-concatenation')
         # sequence labeling
         sequence = bilstm(concatenated_embeddings, mask=mask)
 
