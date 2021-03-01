@@ -232,3 +232,107 @@ class GraphModelCRFv2:
         model = ModelWithCRFLoss(model)
         model.compile(optimizer=optimizer, metrics=["accuracy"], run_eagerly=True)
         return model
+
+
+class GraphModelSoftmax:
+    @staticmethod
+    def create(node_count, edge_count, node_vector_length=768, edge_vector_length=5, n_folds=2, num_classes=5,
+               reducer_type="mean", input_units=768, intermediate_units=768, bilstm_units=64, optimizer=None):
+        # input
+        nodes_input = keras.Input(shape=(node_count, node_vector_length), name='nodes_input')
+        edges_input = keras.Input(shape=(edge_count, edge_vector_length), name='edges_input')
+        senders_input = keras.Input(shape=edge_count, dtype='int32', name='senders_input')
+        receivers_input = keras.Input(shape=edge_count, dtype='int32', name='receivers_input')
+
+        # conv_layer
+        graph_conv_layer = GraphConvV2(input_units,
+                                       intermediate_units,
+                                       node_vector_length,
+                                       edge_vector_length,
+                                       reducer_type=reducer_type,
+                                       name='graph_conv')
+
+        masking = keras.layers.Masking(mask_value=-1, name='masking')
+        bilstm = layers.Bidirectional(layers.LSTM(bilstm_units, return_sequences=True), name='bilstm', )
+        # activation =  layers.Activation('relu', name = 'relu_activation')
+        pre_output_layer = layers.TimeDistributed(layers.Dense(64, activation='relu'))
+        output_layer = layers.TimeDistributed(layers.Dense(num_classes, activation='softmax'), name='outputlayer')
+
+        # graph convolution
+        nodes = nodes_input
+        edges = edges_input
+        senders = senders_input
+        receivers = receivers_input
+        mask = masking.compute_mask(nodes)
+
+        # sequence labeling
+        graph_embeddings = nodes
+
+        for fold in range(n_folds):
+            graph_embeddings, edges, new_senders, receivers = graph_conv_layer(graph_embeddings, edges, senders, receivers)
+
+        concatenated_embeddings = tf.concat([graph_embeddings, nodes], axis=1)
+
+        sequence = bilstm(concatenated_embeddings, mask=mask)
+        # activated_sequence = activation(sequence)
+        pre_output = pre_output_layer(sequence)
+
+        output = output_layer(pre_output)
+
+        model = keras.Model(inputs=[nodes_input, edges_input, senders_input, receivers_input],
+                            outputs=[output, graph_embeddings, mask])
+        model.compile(optimizer=optimizer, loss={'outputlayer': 'categorical_crossentropy'},
+                      metrics={'outputlayer': "accuracy"})
+        model.summary()
+        return model
+
+
+class GraphModelCRFv2_with_concat:
+    @staticmethod
+    def create(node_count, edge_count, node_vector_length=768, edge_vector_length=5, n_folds=2, num_classes=5,
+               reducer_type="mean", input_units=768, intermediate_units=768, bilstm_units=64, optimizer=None):
+        # input
+        nodes_input = keras.Input(shape=(node_count, node_vector_length), name='nodes_input')
+        edges_input = keras.Input(shape=(edge_count, edge_vector_length), name='edges_input')
+        senders_input = keras.Input(shape=edge_count, dtype='int32', name='senders_input')
+        receivers_input = keras.Input(shape=edge_count, dtype='int32', name='receivers_input')
+
+        # conv_layer
+        graph_conv_layer = GraphConvV2(input_units,
+                                       intermediate_units,
+                                       node_vector_length,
+                                       edge_vector_length,
+                                       reducer_type=reducer_type,
+                                       name='graph_conv')
+
+        masking = keras.layers.Masking(mask_value=-1, name='masking')
+        bilstm = layers.Bidirectional(layers.LSTM(bilstm_units, return_sequences=True), name='bilstm')
+        pre_crf_layer_1 = layers.TimeDistributed(layers.Dense(64, activation='relu'), name='pre_crf_layer_1')
+        pre_crf_layer_2 = layers.TimeDistributed(layers.Dense(num_classes, activation='softmax'),
+                                                 name='pre_crf_layer_2')
+
+        crf_layer = CRF(name='crf_layer')
+
+        # graph convolution
+        nodes = nodes_input
+        edges = edges_input
+        senders = senders_input
+        receivers = receivers_input
+        mask = masking.compute_mask(nodes)
+
+        graph_embeddings = nodes
+        for fold in range(n_folds):
+            graph_embeddings, edges, new_senders, receivers = graph_conv_layer(graph_embeddings, edges, senders, receivers)
+
+        concatenated_embeddings = tf.concat([graph_embeddings, nodes], axis=1)
+        # sequence labeling
+        sequence = bilstm(concatenated_embeddings, mask=mask)
+
+        latent_activated_sequence = pre_crf_layer_1(sequence)
+        latent_activated_sequence = pre_crf_layer_2(latent_activated_sequence)
+        output = crf_layer(latent_activated_sequence, mask=mask)
+        model = keras.Model([nodes_input, edges_input, senders_input, receivers_input], [output, graph_embeddings])
+        model.summary()
+        model = ModelWithCRFLoss(model)
+        model.compile(optimizer=optimizer, metrics=["accuracy"], run_eagerly=True)
+        return model

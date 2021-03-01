@@ -224,7 +224,7 @@ class Experiment(BaseExperiment):
         truth_matching = np.where(truth == predictions, 'correct', 'incorrect')
         positions = np.concatenate(positions_batch)
 
-
+        #TODO einmal fit und dann transform, in mlflow ein tag dafür setzen
         pca70 = PCA(n_components=70)
         transformed = pca70.fit_transform(embeddings)
         df = pd.DataFrame()
