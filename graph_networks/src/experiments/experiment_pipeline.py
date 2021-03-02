@@ -28,8 +28,6 @@ class ExperimentPipeline:
                 print(f'An error occurred while executing experiment {experiment.name}')
                 print(f"writing to file {filename}")
                 with open(os.path.join(os.getcwd(), filename), 'a') as f:
-                    if mlflow.active_run():
-                        f.write(f"{mlflow.runName} ")
                     f.write(datetime.today().strftime('%d-%m-%Y-%H:%M:%S'))
                     f.write('--------------------------------------------------------------------------------')
                     f.write('\n')
