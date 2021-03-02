@@ -3,14 +3,19 @@ from typing import List
 import mlflow
 import sys
 import traceback
-import os
-
 from src.experiments.experiment_class.experiment_class import BaseExperiment
+import os
+import gpustat
+import time
 
 
 class ExperimentPipeline:
-    @staticmethod
-    def run(experiments: List[BaseExperiment]):
+    def run(self, experiments: List[BaseExperiment]):
+        index = -1
+        while index < 0:
+            time.sleep(1)
+            index = self.gpu_stat_wait_until_free()
+        print(f"running on GPU {index}")
         for i, experiment in enumerate(experiments):
             try:
                 print(
@@ -23,6 +28,8 @@ class ExperimentPipeline:
                 print(f'An error occurred while executing experiment {experiment.name}')
                 print(f"writing to file {filename}")
                 with open(os.path.join(os.getcwd(), filename), 'a') as f:
+                    if mlflow.active_run():
+                        f.write(f"{mlflow.runName} ")
                     f.write(datetime.today().strftime('%d-%m-%Y-%H:%M:%S'))
                     f.write('--------------------------------------------------------------------------------')
                     f.write('\n')
@@ -42,3 +49,17 @@ class ExperimentPipeline:
             finally:
                 experiment.cleanup()
                 print("\n")
+
+    @staticmethod
+    def gpu_stat_wait_until_free(free_memory: int = 10000):
+        gpustats = gpustat.GPUStatCollection.new_query()
+        g_json = gpustats.jsonify()
+        for i, g in enumerate(g_json["gpus"]):
+            if (g["memory.total"] - g["memory.used"] > free_memory):
+                os.environ['CUDA_VISIBLE_DEVICES'] = f'{i}'
+                return i
+            else:
+                # print("fucking fully loaded GPU")
+                pass
+        return -1
+
