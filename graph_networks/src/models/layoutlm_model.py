@@ -126,10 +126,10 @@ class LayoutLMModel:
         mlflow.log_metric(self.state + "_f1", f1)
         mlflow.log_metric(self.state + "_recall", recall)
         mlflow.log_metric(self.state + "_precision", precision)
-        mlflow.log_metric(self.state + "macro_accuracy", macro_acc)
-        mlflow.log_metric(self.state + "macro_f1", macro_f1)
-        mlflow.log_metric(self.state + "macro_recall", macro_recall)
-        mlflow.log_metric(self.state + "macro_precision", macro_precision)
+        mlflow.log_metric(self.state + "_macro_accuracy", macro_acc)
+        mlflow.log_metric(self.state + "_macro_f1", macro_f1)
+        mlflow.log_metric(self.state + "_macro_recall", macro_recall)
+        mlflow.log_metric(self.state + "_macro_precision", macro_precision)
 
         return {
             "accuracy_score": acc,
