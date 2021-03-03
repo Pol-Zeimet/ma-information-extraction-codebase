@@ -157,6 +157,10 @@ class Experiment(BaseExperiment):
         precision, rec, f1, sup = precision_recall_fscore_support(np.asarray(y_true),
                                                                   np.asarray(y_pred),
                                                                   average='micro')
+
+        macro_precision, macro_rec, macro_f1, macro_sup = precision_recall_fscore_support(np.asarray(y_true),
+                                                                  np.asarray(y_pred),
+                                                                  average='macro')
         if self.config.num_classes == 5:
             labels = ['O', 'I-MONEY', 'I-ORG', 'I-DATE', 'I-GPE']
         else:
@@ -168,16 +172,26 @@ class Experiment(BaseExperiment):
             mlflow.log_metric("train_f1", f1)
             mlflow.log_metric("train_recall", rec)
             mlflow.log_metric("train_precision", precision)
+            mlflow.log_metric("train_macro_accuracy", acc)
+            mlflow.log_metric("train_macro_f1", f1)
+            mlflow.log_metric("train_macro_recall", rec)
+            mlflow.log_metric("train_macro_precision", precision)
         else:
             mlflow.log_metric("eval_accuracy", acc)
             mlflow.log_metric("eval_f1", f1)
             mlflow.log_metric("eval_recall", rec)
             mlflow.log_metric("eval_precision", precision)
+            mlflow.log_metric("eval_macro_accuracy", acc)
+            mlflow.log_metric("eval_macro_f1", f1)
+            mlflow.log_metric("eval_macro_recall", rec)
+            mlflow.log_metric("eval_macro_precision", precision)
 
         y_pred = [labels[idx] for idx in y_pred]
         y_true = [labels[idx] for idx in y_true]
         create_confusion_matrix(self.working_dir, labels, epoch, step, np.asarray(y_true), np.asarray(y_pred))
         print("Latest f1: {}\nprecision: {}\nrecall: {}".format(f1, precision, rec))
+        print("Latest macro_f1: {}\nmacro_precision: {}\nmacro_recall: {}".format(macro_f1, macro_precision, macro_rec))
+
 
 
     def _evaluate_embeddings(self, inputs_batch, true_labels_batch, tokens_batch, positions_batch, epoch, step):

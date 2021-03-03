@@ -117,17 +117,29 @@ class LayoutLMModel:
         precision = precision_score(labels, predictions)
         recall = recall_score(labels, predictions)
         f1 = f1_score(labels, predictions)
+        macro_acc = accuracy_score(labels, predictions)
+        macro_precision = precision_score(labels, predictions, average='macro')
+        macro_recall = recall_score(labels, predictions, average='macro')
+        macro_f1 = f1_score(labels, predictions, average='macro')
 
         mlflow.log_metric(self.state + "_accuracy", acc)
         mlflow.log_metric(self.state + "_f1", f1)
         mlflow.log_metric(self.state + "_recall", recall)
         mlflow.log_metric(self.state + "_precision", precision)
+        mlflow.log_metric(self.state + "macro_accuracy", macro_acc)
+        mlflow.log_metric(self.state + "macro_f1", macro_f1)
+        mlflow.log_metric(self.state + "macro_recall", macro_recall)
+        mlflow.log_metric(self.state + "macro_precision", macro_precision)
 
         return {
             "accuracy_score": acc,
             "precision": precision,
             "recall": recall,
-            "f1": f1
+            "f1": f1,
+            "macro_accuracy_score": macro_acc,
+            "macro_precision": macro_precision,
+            "macro_recall": macro_recall,
+            "macro_f1": macro_f1
         }
 
     def compute_levenshtein(self, y_pred, y_true, tokens):
