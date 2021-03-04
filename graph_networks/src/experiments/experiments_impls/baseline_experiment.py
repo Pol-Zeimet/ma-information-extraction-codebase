@@ -139,7 +139,6 @@ class BertExperiment(Experiment):
             for key, value in metrics.items():
                 self.logger.info(f"  {key} = {value}")
 
-
     def _evaluate(self):
         start = time.time()
         results, distances = self.model.evaluate(self.datasets)

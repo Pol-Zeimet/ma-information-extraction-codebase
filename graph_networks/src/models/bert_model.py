@@ -21,19 +21,22 @@ class BertConfig(Config):
                  model_dir: str,
                  model_id: str,
                  model_type: str,
-                 label_list: [str],
                  num_classes: int,
                  train_f: str,
                  test_f: str,
                  validate_f: str,
+                 label_list: [str],
                  overwrite_output_dir: bool = False,
                  logging: bool = True):
         super().__init__(logging=logging,
                          num_classes=num_classes,
                          model_id=model_id)
         self.model_dir = model_dir
-        self.model_type = model_type
+        unique_labels = set(label_list)
+        label_list = list(unique_labels)
+        label_list.sort()
         self.label_list = label_list
+        self.model_type = model_type
         self.train_f = train_f
         self.test_f = test_f
         self.validate_f = validate_f
@@ -46,7 +49,7 @@ class BertModel:
         self.logging = config.logging
         self.working_dir = working_dir
 
-        self.label_list = self._get_label_list(config.label_list)
+        self.label_list = config.label_list
         self.model_id = config.model_id
         self.model_type = config.model_type
 
@@ -59,15 +62,6 @@ class BertModel:
         self.trainer: Trainer = None
         self.trainer_state = None
         self._create_model_architecture()
-
-    @staticmethod
-    def _get_label_list(given_labels):
-        unique_labels = set()
-        for label in given_labels:
-            unique_labels = unique_labels | set(label)
-        label_list = list(unique_labels)
-        label_list.sort()
-        return label_list
 
     def get_details(self) -> Dict[str, Any]:
         return {
@@ -109,18 +103,26 @@ class BertModel:
         padding = "max_length" if self.data_args.pad_to_max_length else False
         predictions, labels, metrics = self.trainer.predict(dataset)
         predictions = np.argmax(predictions, axis=2)
-        cleaned_predictions = [
-            [self.label_list[p] for (p, l) in zip(prediction, label) if l != -100]
-            for prediction, label in zip(predictions, labels)
-        ]
         results = []
-        for sequence, prediction in zip(dataset['tokens'], cleaned_predictions):
+        for sequence, prediction in zip(dataset['tokens'], predictions):
             tokens = self.tokenizer.tokenize(self.tokenizer.decode(self.tokenizer.encode(sequence,
                                                                                          padding=padding,
                                                                                          truncation=True,
                                                                                          is_split_into_words=True)))
+            tokens_list = []
+            pred_list = []
+            for token, pred in zip(tokens, prediction):
+                if token in self.tokenizer.decode([self.tokenizer.cls_token_id,
+                                                   self.tokenizer.sep_token_id,
+                                                   self.tokenizer.pad_token_id]):
+                    continue
+                elif token.startswith("##") and len(tokens_list) > 0:
+                    tokens_list[-1] = tokens_list[-1] + token.replace('##', '')
+                else:
+                    tokens_list.append(token)
+                    pred_list.append(pred)
             results.append(
-                [(token, prediction) for token, prediction in zip(tokens, prediction)])
+                [(token, self.label_list[prediction]) for token, prediction in zip(tokens_list, pred_list)])
         return results, metrics
 
     def save_weights(self, path: str) -> None:
@@ -260,7 +262,6 @@ class BertModel:
                         true_date.append(text)
                     elif tag == 'MONEY':
                         true_total.append(text)
-
 
             true_addr_text = postprocess_tokens(true_addr, 'addr')
             true_org_text = postprocess_tokens(true_org, 'org')
