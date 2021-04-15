@@ -11,7 +11,14 @@ from layoutlm.data.funsd import FunsdDataset, InputFeatures
 from src.util.AttrDict import AttrDict
 import torch
 
+
 class LayoutLMExperiment(Experiment):
+    def _run_holdout(self) -> None:
+        pass
+
+    def _predict(self, x) -> np.ndarray:
+        pass
+
     def __init__(self, config: LayoutLMConfig):
         super().__init__(config.model_id, config)
 
