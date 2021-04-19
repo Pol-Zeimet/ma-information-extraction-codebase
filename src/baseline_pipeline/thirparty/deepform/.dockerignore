@@ -1,0 +1,10 @@
+# Ignore everything, only make exceptions for the files we know we want.
+*
+
+# Whitelisted exceptions.
+!pyproject.toml
+!poetry.lock
+!deepform/
+!tests/
+!*.yaml
+!init_sweep.sh

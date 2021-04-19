@@ -1,0 +1,121 @@
+wandb_version: 1
+
+len_train:
+  dec: number of documents to use (training + validation)
+  value: 15000
+
+# training dataset settings required for benchmark submissions
+# do not change these if you'd like a pure comparison to the
+# other benchmark submissions
+val_split:
+  value: 0.2
+random_seed:
+  value: 23
+
+# sweeps suggest these are reasonable hyperparameter defaults
+window_len:
+  desc: size of token sequences to train on (and network size!)
+  value: 25
+
+# feature generation
+pad_windows:
+  desc: zero pad beginning and end of doc token stream
+  value: 1
+use_amount:
+  desc: use token dollar value directly as feature
+  value: 1
+use_page:
+  desc: use token page number as feature
+  value: 1
+use_geom:
+  desc: use token geometry (bbox corner) as feature
+  value: 1
+use_string:
+  desc: use token string as feature
+  value: 1
+use_hints:
+  desc: use hard coded field names ("total") as features
+  value: 1
+
+vocab_size:
+  desc: identify (1-hot encode) this many common tokens
+  value: 512
+vocab_embed_size:
+  desc: number of outputs in the vocab embedding
+  value: 16
+
+target_thresh:
+  desc: throw away token matches to PP crowdsourced data that aren't at least this good
+  value: 0.8
+
+# network size
+num_layers:
+  desc: number of layers in model, 2 or 3
+  value: 3
+layer_1_size_factor:
+  desc: layer 1 size = this factor * window_len * token_dims
+  value: 4
+layer_2_size_factor:
+  desc: layer 2 size = this factor * window_len * token_dims
+  value: 2
+layer_3_size_factor:
+  desc: layer 3 size = this factor * window_len * token_dims
+  value: 1
+dropout:
+  value: 0.2
+
+# training config
+epochs:
+  value: 50
+steps_per_epoch:
+  value: 50
+batch_size:
+  desc: batch size in windows (not docs)
+  value: 10000
+positive_fraction:
+  desc: target match scores larger than this will becomes positive labels
+  value: 0.5
+permute_tokens:
+  desc: randomly re-order tokens in each training window
+  value: 0
+
+penalize_missed:
+  desc: how much more a missed 1 counts than a missed 0 in outputs
+  value: 5
+
+learning_rate:
+  value: 0.001
+
+# Affects prediction
+predict_thresh:
+  desc: predictions below this value count as predicting "None"
+  value: 0.5
+
+# These do not affect the training but control various setup and reporting
+render_results_size:
+  desc: log this many PDF images on last epoch
+  value: 20
+use_data_cache:
+  desc: use pickled saved training data (freezes options like padding, amount_feature)
+  value: 1
+doc_acc_max_sample_size:
+  desc: never sample more than this many documents
+  value: 1000
+doc_acc_sample_size:
+  desc: sample epoch+this documents to compute doc_val_acc (uses all docs on last epoch)
+  value: 10
+save_model:
+  desc: whether to save the trained model
+  value: 1
+model_path:
+  desc: path to save the model (if not set, autogenerate)
+  value: ""
+model_artifact_name:
+  desc: used to identify saved models in Weights & Biases
+  value: deepform-model
+use_wandb:
+  desc: report run to wandb and store annotations
+  value: 1
+log_level:
+  desc: minimum level to report in the logs
+  value: INFO
