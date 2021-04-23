@@ -221,8 +221,17 @@ def seg(data_split, output_dir, model_name_or_path, max_len):
 
 def preprocess(image_dir, data_dir, data_split, output_dir, model_name_or_path, max_len, num_classes):
     convert(image_dir, data_dir, data_split, output_dir, num_classes)
-    seg( data_split, output_dir, model_name_or_path, max_len)
+    seg(data_split, output_dir, model_name_or_path, max_len)
 
+
+def create_label_file(path):
+    with open(os.path.join(path, 'train.txt'), 'r', encoding="utf8") as f:
+        labels = set([line.split('\t')[-1].strip() for line in f if line.split('\t')[-1].strip() != ''])
+        labels = list(labels)
+        labels.sort()
+    with open(os.path.join(path, 'labels.txt'), 'w', encoding="utf8") as f:
+        for label in labels:
+            f.write(label + '\n')
 
 def format_and_preprocess(image_dir,
                           train_test_split=0.70,
@@ -252,3 +261,5 @@ def format_and_preprocess(image_dir,
                model_name_or_path='microsoft/layoutlm-base-uncased',
                max_len=max_len,
                num_classes=num_classes)
+
+    create_label_file(output_dir)
