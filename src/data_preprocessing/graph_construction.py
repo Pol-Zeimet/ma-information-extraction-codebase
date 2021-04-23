@@ -26,9 +26,9 @@ if __name__ == "__main__":
     parser.add_argument('--data_src', type=str, help="Path to Dataframe created in preprocessing. Specifically the results_df.json for graphs.")
     parser.add_argument('--embedding_model_src', help = "Only relevant when using BERT Embeddings. Defaul path  is set to trained BERT Baseline Model.")
     parser.add_argument('--labels_output_dir', type=str, help="Path to Output directory for labels",
-                        default=os.path.join(os.path.dirname(__file__), "../model_experiments/data/SROIE/labels"))
+                        default=os.path.join(os.path.dirname(__file__), "../data/SROIE/labels"))
     parser.add_argument('--graphs_output_dir', type=str, help="Path to Output directory for labels",
-                        default=os.path.join(os.path.dirname(__file__), "../model_experiments/data/SROIE/graphs"))
+                        default=os.path.join(os.path.dirname(__file__), "../data/SROIE/graphs"))
     args = parser.parse_args()
     embedder = Embedder(embedding_type=args.embedding_type, model_src=args.model_src)
 

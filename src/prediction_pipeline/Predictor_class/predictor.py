@@ -6,7 +6,7 @@ from PIL import ImageDraw, ImageFont
 import os
 from util.preprocessing_utils import find_max_positions, normalize_box_for_graphs, convert_to_padded_graph, normalize_box, \
     convert_example_to_features, iob_to_label
-from util.Embedder import Embedder
+from util.embedder import Embedder
 
 
 try:

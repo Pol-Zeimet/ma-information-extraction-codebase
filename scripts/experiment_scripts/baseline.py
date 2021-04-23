@@ -15,23 +15,23 @@ model_ids = ['Baseline_Model_Bert_5_classes',
 data_registry ={
     '5':
         {
-            "train_f": os.path.join(os.path.dirname(__file__), '../../data/SROIE/Baseline/train_less_classes.json'),
-            "test_f": os.path.join(os.path.dirname(__file__), '../../data/SROIE/Baseline/test_less_classes.json'),
-            "validate_f": os.path.join(os.path.dirname(__file__), '../../data/SROIE/Baseline/validate_less_classes.json'),
+            "train_f": os.path.join(os.path.dirname(__file__), '../../data/SROIE/Baseline/train_5_classes.json'),
+            "test_f": os.path.join(os.path.dirname(__file__), '../../data/SROIE/Baseline/test_5_classes.json'),
+            "validate_f": os.path.join(os.path.dirname(__file__), '../../data/SROIE/Baseline/validate_5_classes.json'),
             "labels" : ['O', 'I-MONEY', 'I-ORG', 'I-DATE', 'I-GPE']
         },
     '9':
         {
-            "train_f": os.path.join(os.path.dirname(__file__), '../../data/SROIE/Baseline/train_medium_classes.json'),
-            "test_f": os.path.join(os.path.dirname(__file__), '../../data/SROIE/Baseline/test_medium_classes.json'),
-            "validate_f": os.path.join(os.path.dirname(__file__), '../../data/SROIE/Baseline/validate_medium_classes.json'),
+            "train_f": os.path.join(os.path.dirname(__file__), '../../data/SROIE/Baseline/train_9_classes.json'),
+            "test_f": os.path.join(os.path.dirname(__file__), '../../data/SROIE/Baseline/test_9_classes.json'),
+            "validate_f": os.path.join(os.path.dirname(__file__), '../../data/SROIE/Baseline/validate_9_classes.json'),
             "labels": ['O', 'B-MONEY', 'I-MONEY', 'B-ORG', 'I-ORG', 'B-DATE', 'I-DATE', 'B-GPE', 'I-GPE']
         },
     '13':
         {
-            "train_f": os.path.join(os.path.dirname(__file__), '../../data/SROIE/Baseline/train.json'),
-            "test_f": os.path.join(os.path.dirname(__file__), '../../data/SROIE/Baseline/test.json'),
-            "validate_f": os.path.join(os.path.dirname(__file__), '../../data/SROIE/Baseline/validate.json'),
+            "train_f": os.path.join(os.path.dirname(__file__), '../../data/SROIE/Baseline/train_13_classes.json'),
+            "test_f": os.path.join(os.path.dirname(__file__), '../../data/SROIE/Baseline/test_13_classes.json'),
+            "validate_f": os.path.join(os.path.dirname(__file__), '../../data/SROIE/Baseline/validate_13_classes.json'),
             "labels": ['O', 'B-MONEY', 'I-MONEY', 'L-MONEY', 'B-ORG', 'I-ORG', 'L-ORG', 'B-DATE', 'I-DATE', 'L-DATE',
                        'B-GPE', 'I-GPE', 'L-GPE']
         }

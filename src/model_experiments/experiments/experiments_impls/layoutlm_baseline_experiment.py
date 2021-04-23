@@ -1,7 +1,7 @@
 from src.model_experiments.experiments.experiment_class.experiment_class import Experiment
 from model_experiments.model_classes.layoutlm_model import LayoutLMModel
 from model_experiments.model_classes.layoutlm_model import LayoutLMConfig
-from src.util.AttrDict import AttrDict
+from src.util.attr_dict import AttrDict
 import mlflow
 import time
 import numpy as np

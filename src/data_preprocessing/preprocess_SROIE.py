@@ -5,6 +5,7 @@ import pandas as pd
 import math
 import json
 from tqdm import tqdm
+import numpy as np
 
 
 def match_token_to_label(tokens_src, ground_truth_src, output_dir):
@@ -30,6 +31,8 @@ def match_token_to_label(tokens_src, ground_truth_src, output_dir):
 
     results_df_ner.to_json(os.path.join(output_dir, 'results_df_ner.json'))
     results_df.to_json(os.path.join(output_dir, 'results_df.json'))
+    np.save(os.path.join(output_dir, 'doc_names.npy'), np.asarray(list(doc_names)))
+
 
 
 def process_token_line(token_line, truth_data):
@@ -74,6 +77,8 @@ def match_token_to_label_v2(tokens_src, ground_truth_src, output_dir):
 
     results_df_ner.to_json(os.path.join(output_dir, 'results_df_ner_v2.json'))
     results_df.to_json(os.path.join(output_dir, 'results_df_v2.json'))
+    np.save(os.path.join(output_dir, 'doc_names.npy'), np.asarray(list(doc_names)))
+
 
 
 def process_token_line_v2(token_line, truth_data):
@@ -111,6 +116,7 @@ def match_token_to_label_v3(tokens_src, ground_truth_src, output_dir):
                                                                      results_df_ner, doc_name)
     results_df_ner.to_json(os.path.join(output_dir, 'results_df_ner_v2.json'))
     results_df.to_json(os.path.join(output_dir, 'results_df_v2.json'))
+    np.save(os.path.join(output_dir, 'doc_names.npy'), np.asarray(list(doc_names)))
 
 
 def process_token_line_v3(labels, positions, token_line, tokens, truth_data):
@@ -157,11 +163,8 @@ def process_token_line_v3(labels, positions, token_line, tokens, truth_data):
 
 def get_doc_names(tokens_src):
     filenames = glob.glob(tokens_src + '*.txt')
-    file_count = len(filenames)
     doc_names = [filename.split('/')[-1].split('.')[0].split(' ')[0] for filename in filenames]
     doc_names = set(doc_names)
-    doc_name_count = len(doc_names)
-    print('found ' + str(file_count - doc_name_count) + ' duplicates')
     return doc_names
 
 
@@ -239,23 +242,25 @@ def check_label(token, truth_data):
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Preprocessing Script für SROIE Datensatz. Matching zwischen gegebenen'
-                                                 'und Truth. Erstellt 2 JSON Dateien: Einmal für Graphen (results_df) '
-                                                 'und einmal für LayoutLM (results_def_ner) '
+                                                 'und Truth. Erstellt 2 JSON Dateien: Einmal für Graphen(results_df), LayoutLM '
+                                                 'und einmal für BERT (results_def_ner) '
                                                  'Token')
     parser.add_argument('--method', choices=['v1', 'v2', 'v3'],
-                        help="Wahl aus v1, v2 und v3. v1 matched ganze zeilen zu einem Label und gibt jedem token "
+                        help="Wahl aus v1, v2 und v3. "
+                             "v1 matched ganze zeilen zu einem Label und gibt jedem token "
                              "der Zeile die gleiche bounding box."
                              "v2 matched ganze Zeilen zu einem Label und teilt gegebene Boundingbox auf einzelne"
                              " Wörter der Zeile auf"
                              "v3 versucht, jedes Token einzeln einem Label zuzuordnen und gibt jedem Token seine"
                              " eigene Bounding Box"
-                             "v2 funktioniert am Besten und ist Default", default='v2')
+                             "v2 funktioniert am Besten und ist Default für Graphen. LayoutLM benötigt v1 und zusätzlich wahlweise v2 oder v3", default='v2')
     parser.add_argument('--token_src', type=str, help='Pfad zu den extrahierten Token und deren Koordinaten.'
                                                       ' (task1train(626p))',
                         required=True)
     parser.add_argument('--ground_truth_src', type=str, help='Pfad zu der Grountruth für die dokumente. '
                                                              '(task2train(626p))', required=True)
-    parser.add_argument('--output_dir', type=str, help="Speicherpfad für die fertigen Daten")
+    parser.add_argument('--output_dir', type=str, help="Speicherpfad für die fertigen Daten",
+                        default=os.path.join(os.path.dirname(__file__), "../data/SROIE/"))
     args = parser.parse_args()
 
     if args.method == 'v1':

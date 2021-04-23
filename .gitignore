@@ -4,4 +4,5 @@ Pipfile*
 .idea
 *_env
 __pycache__
-/data/
+/data/ProPublica/
+/data/SROIE/

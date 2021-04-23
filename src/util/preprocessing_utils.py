@@ -1,7 +1,7 @@
 import statistics
 import numpy as np
 from tqdm import tqdm
-from .Embedder import Embedder
+from .embedder import Embedder
 
 
 def is_overlapping(box1, box2):
