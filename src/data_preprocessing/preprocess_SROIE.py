@@ -6,9 +6,25 @@ import math
 import json
 from tqdm import tqdm
 import numpy as np
+from typing import List
 
 
 def match_token_to_label(tokens_src, ground_truth_src, output_dir):
+    """ Assign labels to each token.
+
+        Args:
+            :param tokens_src -- src directory for OCR Data of SROIE dataset
+            :param ground_truth_src -- src directory for extraction ground truth of SROIE dataset
+            :param output_dir -- output directory for the finished dataframe
+        Creates:
+            A dataframe with an entry for each line with its position, its token and their corresponding labels
+            A dataframe with an entry for each document containing a list of tokens and a list of their labels
+            A numpy array containing a list with the name of every document in the dataset
+
+        This is a simple solution: every token in a line gets the same label and position.
+        For every line in the OCR data, the method checks if it is part of the ground truth and assigns
+        the corresponding label.
+    """
     results_df_ner = pd.DataFrame()
     results_df = pd.DataFrame()
     doc_names = get_doc_names(tokens_src)
@@ -35,7 +51,17 @@ def match_token_to_label(tokens_src, ground_truth_src, output_dir):
 
 
 
-def process_token_line(token_line, truth_data):
+def process_token_line(token_line, truth_data) -> (str, List, str):
+    """
+    compares a line from OCR data to the given ground truth and assigns a label
+    :param token_line:
+    :param truth_data:
+    :return: A tuple containing:
+        the label as string
+        the position of the line in the receipt as list of coordinates
+        a string containin every token of the line, seperated by commas
+
+    """
     all_values = token_line.split(',')
     pos_vals = all_values[:8]
     token_val = ','.join(all_values[8:])
@@ -45,6 +71,23 @@ def process_token_line(token_line, truth_data):
 
 
 def match_token_to_label_v2(tokens_src, ground_truth_src, output_dir):
+    """" Assign labels to each token.
+
+        Args:
+            :param tokens_src -- src directory for OCR Data of SROIE dataset
+            :param ground_truth_src -- src directory for extraction ground truth of SROIE dataset
+            :param output_dir -- output directory for the finished dataframe
+        Creates:
+            A dataframe with an entry for each token with its position and corresponding label
+            A dataframe with an entry for each document containing a list of tokens and a list of their labels
+            A numpy array containing a list with the name of every document in the dataset
+
+        This is a more advanced solution: every token in a line gets the same label a newly calculated position based on
+         its character-count and the position of the line.
+        For every line in the OCR data, the method checks if it is part of the ground truth and assigns
+        the corresponding label. For each token, we assign a new bounding box based on the box of the entire line and
+        the length of the token.
+    """
     results_df_ner = pd.DataFrame()
     results_df = pd.DataFrame()
     doc_names = get_doc_names(tokens_src)
@@ -81,7 +124,21 @@ def match_token_to_label_v2(tokens_src, ground_truth_src, output_dir):
 
 
 
-def process_token_line_v2(token_line, truth_data):
+def process_token_line_v2(token_line, truth_data) -> (int, str, [str], [str], int):
+    """
+        Compares a line from OCR data to the given ground truth and assigns a label.
+        Extracts positional data from the given bounding box of the line.
+
+        :param token_line: a line read form the OCR data
+        :param truth_data: the greound truth for the current receipt
+        :return: A tuple containing:
+            the start position of the line in the receipt
+            the label as string
+            the position of the line in the receipt as list of coordinates
+            a list containing every token of the line
+            an int value  indicating the average with per character in the line
+
+        """
     all_values = token_line.split(',')
     pos_vals = all_values[:8]
     min_xpos = pos_vals[0]
@@ -96,6 +153,21 @@ def process_token_line_v2(token_line, truth_data):
 
 
 def match_token_to_label_v3(tokens_src, ground_truth_src, output_dir):
+    """ Assign labels to each token.
+
+        Args:
+            :param tokens_src -- src directory for OCR Data of SROIE dataset
+            :param ground_truth_src -- src directory for extraction ground truth of SROIE dataset
+            :param output_dir -- output directory for the finished dataframe
+        Creates:
+            A dataframe with an entry for each token with its position and the corresponding label
+            A dataframe with an entry for each extracted line in the receipt with its position, tokens and their labels
+            A numpy array containing a list with the name of every document in the dataset
+
+        This is an advanced solution: every token is individually assigned a label and position.
+        For every token in every line in the OCR data, the method checks if it is part of the ground truth and assigns
+        the corresponding label. This does not work as good as matching the entire line.
+    """
     results_df_ner = pd.DataFrame()
     results_df = pd.DataFrame()
     doc_names = get_doc_names(tokens_src)
@@ -120,6 +192,20 @@ def match_token_to_label_v3(tokens_src, ground_truth_src, output_dir):
 
 
 def process_token_line_v3(labels, positions, token_line, tokens, truth_data):
+    """
+            Compares a line from OCR data to the given ground truth and assigns a label.
+            Extracts positional data from the given bounding box of the line.
+
+            :param labels: the current list of labels for the document
+            :param token_line: a line read form the OCR data
+            :param: tokens: the current list of tokens in the document
+            :param truth_data: the ground truth for the current receipt
+
+            Appends each token and assigned label to the corresponding lists given as parameters.
+            Each token is checked for its appearence in the ground truth. If it matches multiple labels, we concatenate
+            it with its direct neigbouras and check again.
+
+            """
     all_values = token_line.split(',')
     pos_vals = all_values[:8]
     token_val = ','.join(all_values[8:])
@@ -162,13 +248,16 @@ def process_token_line_v3(labels, positions, token_line, tokens, truth_data):
 
 
 def get_doc_names(tokens_src):
+    """Get the names of all the receipts in the dataset"""
     filenames = glob.glob(tokens_src + '*.txt')
     doc_names = [filename.split('/')[-1].split('.')[0].split(' ')[0] for filename in filenames]
     doc_names = set(doc_names)
     return doc_names
 
 
-def attach_ner_prefix_to_labels(file_results_df, results_df, results_df_ner, doc_name):
+def attach_ner_prefix_to_labels(file_results_df, results_df, results_df_ner, doc_name) -> (pd.DataFrame, pd.DataFrame):
+    """Attaches BILUO prefixes to token forming an entity"""
+
     for idx, row in file_results_df.iterrows():
         token_array = row.tokens.split(' ')
         row.tokens = token_array
@@ -197,7 +286,8 @@ def attach_ner_prefix_to_labels(file_results_df, results_df, results_df_ner, doc
     return results_df, results_df_ner
 
 
-def determine_label_for_token(eval_token_val, truth_data):
+def determine_label_for_token(eval_token_val, truth_data) -> str:
+    """Checks is an entire line is part of ground truth"""
     for key in truth_data.keys():
         eval_truth_str = ''.join(truth_data[key].split(' ')).strip()
         if len(eval_token_val) > 1 and eval_token_val in eval_truth_str or eval_truth_str in eval_token_val:
@@ -218,7 +308,8 @@ def determine_label_for_token(eval_token_val, truth_data):
     return label
 
 
-def check_label(token, truth_data):
+def check_label(token, truth_data) -> List:
+    """checks if token is part of ground truth for one or more labels"""
     possible_labels = []
     found = False
     if len(token) > 1:

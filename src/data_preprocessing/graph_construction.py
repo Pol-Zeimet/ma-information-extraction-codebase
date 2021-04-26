@@ -7,6 +7,8 @@ from util.preprocessing_utils import build_graph, Embedder, find_max_positions
 
 
 def process_df_to_graph(subset):
+    """construct a document graph given a subset of a dataframe from Sroie preprocessing (result_df of any version)
+    :param df subset from result_df for a specific document i.e. subset = df[df['doc_name'] == xyz]"""
     max_X_pos, max_Y_pos = find_max_positions(subset.position)
     aggregated_positions = [[1000 * float(subset.position[i][0]) / max_X_pos,
                              1000 * float(subset.position[i][1]) / max_Y_pos,
