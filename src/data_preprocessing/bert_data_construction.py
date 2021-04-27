@@ -5,20 +5,28 @@ import math
 from typing import List
 
 
-def construct_dataset(classes:int, train_test_val_split:List, data_src, save_dir):
-    assert classes in [5,9,13]
+def construct_dataset(num_classes:int, train_test_val_split:List, data_src, save_dir):
+    """
+    Creates three JSON Files, one for train, test and eval.
+    :param num_classes: the number of classes (5, 9 or 13)
+    :param train_test_val_split: list of float indicating the split for train, test and evaluation. like [0.7, 0.2, 0.1]
+    :param data_src: path to the NER Dataframe from preprocessing (results_df_ner)
+    :param save_dir: path to output directory
+    :return:
+    """
+    assert num_classes in [5, 9, 13]
     assert len(train_test_val_split) == 3
     assert sum(train_test_val_split) == 1
     df = pd.read_json(data_src)
     for i, row in df.iterrows():
         df.at[i, 'tokens'] = [str(y) if str(type(y)) != "<class 'str'>" else y for y in row.tokens]
-        if classes == 5:
+        if num_classes == 5:
             name = '5_classes'
             df.at[i, 'ner_tags'] = [ 'I-ORG' if (y ==  "B-ORG") | (y == 'L-ORG') else y for y in row.ner_tags]
             df.at[i, 'ner_tags'] = [ 'I-MONEY' if (y ==  "B-MONEY") | (y == 'L-MONEY') else y for y in row.ner_tags]
             df.at[i, 'ner_tags'] = [ 'I-GPE' if (y ==  "B-GPE") | (y == 'L-GPE') else y for y in row.ner_tags]
             df.at[i, 'ner_tags'] = [ 'I-DATE' if (y ==  "B-DATE") | (y == 'L-DATE') else y for y in row.ner_tags]
-        elif classes == 9:
+        elif num_classes == 9:
             name = '9_classes'
             df.at[i, 'ner_tags'] = ['I-ORG' if y == 'L-ORG' else y for y in row.ner_tags]
             df.at[i, 'ner_tags'] = ['I-MONEY' if y == 'L-MONEY' else y for y in row.ner_tags]
