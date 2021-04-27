@@ -1,6 +1,50 @@
 # Informationsextraktion aus semistrukturierten Daten
 
 ## Setup
+### Requirements
+Da für die Modelle unterschiedliche Module und/oder Modulversionen benötigt werden, sollten separate virtuelle Umgebungen erstellt werden.
+##### GCNN, RNN und BERT
+Für Graphennetze und BERT stehen die benötigten Python Module in einer `requirements.txt`.
+##### LayoutLM
+LayoutLM benötigt für die Experimente unterschiedliche Versionen der Module, hinterlegt in `layoutlm_requirements.txt`.
+darunter auch unilm/layoutlm.
+Dieses muss selarat installiert werden über 
+
+
+     ! git clone -b remove_torch_save https://github.com/NielsRogge/unilm.git
+    
+     ! cd unilm/layoutlm
+    
+     ! pip install unilm/layoutlm --quiet
+
+Erst nachdem unilm/layoutlm installier wurde, sollten die restlichen requirements intalliert werden.
+
+##### Simple Extractor
+Der simple Extraktor mit eigenen Heuristiken für jedes Label ist in einem Jupyter Notebook umgesetzt.
+Für die Ausführung des Notebooks wird wie auch für die Prediction Pipeline Pytesserat benötigt.
+Zusätzlich allerdings auch libpostal:
+      
+    !sudo apt-get install curl autoconf automake libtool python-dev pkg-config
+    !sudo apt-get install curl autoconf automake libtool pkg-config
+    !git clone https://github.com/openvenues/libpostal
+    %cd libpostal
+    !./bootstrap.sh
+    !./configure
+    !make -j4
+    !sudo make install
+    !sudo ldconfig
+    !pip install postal --quiet
+    
+Ebenfalls benötigt werden folgende Module:
+
+    !pip install date-extractor --quiet
+    !pip install quantulum3 --quiet
+    !pip install python_levenshtein --quiet
+
+##### Prediction Pipeline
+
+Für die Prediction Pipeline wir zusätzlich noch Tesseract-OCR benötigt, sowie der Python Wrapper pytesseract.
+Hierfür kann einfach die [Installationsanweisung](https://github.com/madmaze/pytesseract) befolgt werden. 
 
 ### SROIE Datensatz
 
